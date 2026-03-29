@@ -1,0 +1,127 @@
+import { useState, useEffect } from "react";
+import { Search, Plus, Filter } from "lucide-react";
+import { getExpenses, type ExpenseResponse } from "@/api/expenseService";
+import { PageHeader } from "@/components/PageHeader";
+import { StatusBadge } from "@/components/StatusBadge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SubmitExpenseModal } from "@/components/SubmitExpenseModal";
+import { motion } from "framer-motion";
+
+export default function ExpensesPage() {
+  const [expenses, setExpenses] = useState<ExpenseResponse[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [modalOpen, setModalOpen] = useState(false);
+
+  const loadExpenses = async () => {
+    setLoading(true);
+    try {
+      const data = await getExpenses();
+      setExpenses(data);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { loadExpenses(); }, []);
+
+  const filtered = expenses.filter((exp) => {
+    if (statusFilter !== "all" && exp.status !== statusFilter) return false;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      return (
+        String(exp.id).includes(q) ||
+        exp.description.toLowerCase().includes(q) ||
+        exp.category.toLowerCase().includes(q) ||
+        exp.submittedByName.toLowerCase().includes(q)
+      );
+    }
+    return true;
+  });
+
+  const statuses = ["all", "PENDING", "APPROVED", "REJECTED", "WITHDRAWN"] as const;
+
+  if (loading) {
+    return <div className="flex items-center justify-center h-64 text-muted-foreground">Loading expenses...</div>;
+  }
+
+  return (
+    <div>
+      <PageHeader title="Expenses" description="Track and manage petty cash expenses">
+        <Button onClick={() => setModalOpen(true)}>
+          <Plus className="h-4 w-4 mr-1" /> Submit Expense
+        </Button>
+      </PageHeader>
+
+      <div className="flex flex-wrap gap-2 mb-4">
+        {statuses.map((s) => (
+          <button
+            key={s}
+            onClick={() => setStatusFilter(s)}
+            className={`rounded-lg px-3 py-1.5 text-xs font-medium capitalize transition-colors ${
+              statusFilter === s
+                ? "bg-primary text-primary-foreground"
+                : "bg-secondary text-secondary-foreground hover:bg-muted"
+            }`}
+          >
+            {s.toLowerCase()} ({s === "all" ? expenses.length : expenses.filter((e) => e.status === s).length})
+          </button>
+        ))}
+      </div>
+
+      <div className="flex flex-wrap gap-3 mb-4">
+        <div className="relative flex-1 min-w-[200px] max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search expenses..."
+            className="pl-9"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+      </div>
+
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="glass-card">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b text-left text-xs text-muted-foreground">
+                <th className="px-5 py-3 font-medium">ID</th>
+                <th className="px-5 py-3 font-medium">Description</th>
+                <th className="px-5 py-3 font-medium">Category</th>
+                <th className="px-5 py-3 font-medium">Branch</th>
+                <th className="px-5 py-3 font-medium">Amount</th>
+                <th className="px-5 py-3 font-medium">Submitted By</th>
+                <th className="px-5 py-3 font-medium">Status</th>
+                <th className="px-5 py-3 font-medium">Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.length === 0 ? (
+                <tr><td colSpan={8} className="px-5 py-12 text-center text-muted-foreground">No expenses found</td></tr>
+              ) : (
+                filtered.map((exp) => (
+                  <tr key={exp.id} className="border-b last:border-0 hover:bg-muted/50 transition-colors">
+                    <td className="px-5 py-3 font-medium text-primary">#{exp.id}</td>
+                    <td className="px-5 py-3 max-w-[200px] truncate">{exp.description}</td>
+                    <td className="px-5 py-3 text-muted-foreground">{exp.category}</td>
+                    <td className="px-5 py-3">{exp.branchName}</td>
+                    <td className="px-5 py-3 font-medium">KES {exp.amount.toLocaleString()}</td>
+                    <td className="px-5 py-3 text-muted-foreground">{exp.submittedByName}</td>
+                    <td className="px-5 py-3"><StatusBadge status={exp.status.toLowerCase()} /></td>
+                    <td className="px-5 py-3 text-muted-foreground">{new Date(exp.createdAt).toLocaleDateString()}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </motion.div>
+
+      <SubmitExpenseModal open={modalOpen} onClose={() => { setModalOpen(false); loadExpenses(); }} />
+    </div>
+  );
+}
