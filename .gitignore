@@ -1,0 +1,21 @@
+# IntelliJ / Java / Maven
+.idea/
+*.iml
+target/
+out/
+.gradle/
+build/
+*.class
+
+# Node / React / Vite
+node_modules/
+dist/
+dist-ssr/
+*.local
+.eslintcache
+.vite/
+
+# System Files
+.DS_Store
+Thumbs.db
+desktop.ini
