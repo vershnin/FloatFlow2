@@ -1,0 +1,19 @@
+
+services:
+
+  postgres:
+    image: postgres:15
+    container_name: floatflow_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: floatflow_db
+      POSTGRES_USER: floatflow_user
+      POSTGRES_PASSWORD: floatflow_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - floatflow_pgdata:/var/lib/postgresql/data
+
+volumes:
+  floatflow_pgdata:
+    driver: local

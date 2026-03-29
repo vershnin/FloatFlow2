@@ -1,0 +1,149 @@
+package com.floatflow.service;
+
+import com.floatflow.audit.AuditService;
+import com.floatflow.dto.request.CreateFloatRequest;
+import com.floatflow.dto.request.TopUpFloatRequest;
+import com.floatflow.dto.response.FloatResponse;
+import com.floatflow.entity.Branch;
+import com.floatflow.entity.FloatStatus;
+import com.floatflow.entity.FloatTransaction;
+import com.floatflow.entity.User;
+import com.floatflow.exception.BadRequestException;
+import com.floatflow.exception.ResourceNotFoundException;
+import com.floatflow.repository.BranchRepository;
+import com.floatflow.repository.FloatRepository;
+import com.floatflow.repository.FloatTransactionRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class FloatService {
+
+    private final FloatRepository floatRepository;
+    private final FloatTransactionRepository floatTransactionRepository;
+    private final BranchRepository branchRepository;
+    private final AuditService auditService;
+
+    @Transactional
+    public FloatResponse createFloat(CreateFloatRequest request, User createdBy) {
+        Branch branch = branchRepository.findById(request.getBranchId())
+            .orElseThrow(() -> new ResourceNotFoundException("Branch not found: " + request.getBranchId()));
+
+        // Optional: prevent multiple active floats per branch
+        floatRepository.findByBranchIdAndStatus(branch.getId(), FloatStatus.ACTIVE)
+            .ifPresent(existing -> {
+                throw new BadRequestException("Branch already has an active float. Please close it first.");
+            });
+
+        com.floatflow.entity.Float floatAllocation = com.floatflow.entity.Float.builder()
+            .branch(branch)
+            .initialAmount(request.getInitialAmount())
+            .currentBalance(request.getInitialAmount())
+            .createdBy(createdBy)
+            .build();
+
+        floatAllocation = floatRepository.save(floatAllocation);
+
+        // Record the initial allocation as a transaction
+        saveTransaction(floatAllocation, "INITIAL_ALLOCATION", request.getInitialAmount(), "Float created");
+
+        auditService.log(createdBy.getId(), AuditService.FLOAT_CREATED, "Float",
+            floatAllocation.getId(), "Amount: " + request.getInitialAmount());
+
+        log.info("Float created for branch {} with amount {}", branch.getName(), request.getInitialAmount());
+        return toResponse(floatAllocation);
+    }
+
+    @Transactional
+    public FloatResponse topUp(Long floatId, TopUpFloatRequest request, User user) {
+        com.floatflow.entity.Float floatAllocation = findActiveFloat(floatId);
+
+        floatAllocation.setCurrentBalance(floatAllocation.getCurrentBalance().add(request.getAmount()));
+
+        // If float was exhausted, reactivate it
+        if (floatAllocation.getStatus() == FloatStatus.EXHAUSTED) {
+            floatAllocation.setStatus(FloatStatus.ACTIVE);
+        }
+
+        floatRepository.save(floatAllocation);
+        saveTransaction(floatAllocation, "TOPUP", request.getAmount(), request.getReference());
+
+        auditService.log(user.getId(), AuditService.FLOAT_TOPUP, "Float", floatId,
+            "TopUp: " + request.getAmount());
+
+        return toResponse(floatAllocation);
+    }
+
+    public List<FloatResponse> getAllFloats() {
+        return floatRepository.findAll().stream()
+            .map(this::toResponse)
+            .collect(Collectors.toList());
+    }
+
+    public List<FloatResponse> getFloatsByBranch(Long branchId) {
+        return floatRepository.findByBranchId(branchId).stream()
+            .map(this::toResponse)
+            .collect(Collectors.toList());
+    }
+
+    public com.floatflow.entity.Float findActiveFloat(Long floatId) {
+        return floatRepository.findById(floatId)
+            .filter(f -> f.getStatus() == FloatStatus.ACTIVE)
+            .orElseThrow(() -> new ResourceNotFoundException("Active float not found with ID: " + floatId));
+    }
+
+    /**
+     * Subtract an approved expense from the float.
+     */
+    @Transactional
+    public void deductFromFloat(com.floatflow.entity.Float floatAllocation, BigDecimal amount, Long expenseId) {
+        floatAllocation.setCurrentBalance(floatAllocation.getCurrentBalance().subtract(amount));
+
+        // Auto-exhaust if balance hits zero
+        if (floatAllocation.getCurrentBalance().compareTo(BigDecimal.ZERO) <= 0) {
+            floatAllocation.setStatus(FloatStatus.EXHAUSTED);
+        }
+
+        floatRepository.save(floatAllocation);
+        saveTransaction(floatAllocation, "EXPENSE_DEDUCTION", amount, "Expense #" + expenseId);
+    }
+
+    private void saveTransaction(com.floatflow.entity.Float floatAllocation, String type,
+                                  BigDecimal amount, String reference) {
+        FloatTransaction tx = FloatTransaction.builder()
+            .floatAllocation(floatAllocation)
+            .type(type)
+            .amount(amount)
+            .reference(reference)
+            .build();
+        floatTransactionRepository.save(tx);
+    }
+
+    private FloatResponse toResponse(com.floatflow.entity.Float f) {
+        double percentage = f.getInitialAmount().compareTo(BigDecimal.ZERO) > 0
+            ? f.getCurrentBalance().divide(f.getInitialAmount(), 4, RoundingMode.HALF_UP)
+                .multiply(BigDecimal.valueOf(100)).doubleValue()
+            : 0;
+
+        return FloatResponse.builder()
+            .id(f.getId())
+            .branchId(f.getBranch().getId())
+            .branchName(f.getBranch().getName())
+            .initialAmount(f.getInitialAmount())
+            .currentBalance(f.getCurrentBalance())
+            .status(f.getStatus())
+            .createdByName(f.getCreatedBy().getName())
+            .createdAt(f.getCreatedAt())
+            .balancePercentage(percentage)
+            .build();
+    }
+}
