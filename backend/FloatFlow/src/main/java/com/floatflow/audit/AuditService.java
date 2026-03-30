@@ -37,6 +37,12 @@ public class AuditService {
     public static final String POLICY_DELETED = "POLICY_DELETED";
     public static final String USER_REGISTERED = "USER_REGISTERED";
     public static final String USER_LOGIN = "USER_LOGIN";
+    public static final String ADMIN_USER_CREATED = "ADMIN_USER_CREATED";
+    public static final String ADMIN_USER_UPDATED = "ADMIN_USER_UPDATED";
+    public static final String ADMIN_USER_DEACTIVATED = "ADMIN_USER_DEACTIVATED";
+    public static final String ADMIN_USER_ACTIVATED = "ADMIN_USER_ACTIVATED";
+    public static final String ADMIN_ROLE_CHANGED = "ADMIN_ROLE_CHANGED";
+    public static final String ADMIN_PASSWORD_RESET = "ADMIN_PASSWORD_RESET";
 
     /**
      * Records an audit entry with a SHA-256 checksum for integrity.
