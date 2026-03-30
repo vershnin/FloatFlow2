@@ -3,7 +3,7 @@
 
 > **Project by:** Orinda Richard Gak (Reg No: 22/05815)  
 > **Supervisor:** Dr. Rachael Kibuku — KCA University  
-> **Stack:** Java 21 · Spring Boot 3.2 · PostgreSQL · JWT · Maven
+> **Stack:** Java 25 · Spring Boot 4.0 · PostgreSQL · JWT · Maven 3.9
 
 ---
 
@@ -30,8 +30,8 @@ com.floatflow
 ## 🚀 Prerequisites
 
 Before running the project, install:
-1. **Java 21** → https://adoptium.net/
-2. **Maven 3.9+** → https://maven.apache.org/download.cgi
+1. **Java 25** → https://adoptium.net/
+2. **Maven 3.9.14** → https://maven.apache.org/download.cgi
 3. **PostgreSQL 15+** → https://www.postgresql.org/download/
 4. **Git** → https://git-scm.com/
 
