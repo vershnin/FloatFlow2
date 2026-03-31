@@ -5,6 +5,8 @@ const statusStyles: Record<string, string> = {
   pending: "bg-warning/10 text-warning",
   rejected: "bg-destructive/10 text-destructive",
   paid: "bg-primary/10 text-primary",
+  active: "bg-success/10 text-success",
+  inactive: "bg-muted text-muted-foreground",
 };
 
 export function StatusBadge({ status }: { status: string }) {
