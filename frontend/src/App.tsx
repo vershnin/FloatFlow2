@@ -21,6 +21,7 @@ import ForgotPasswordPage from "@/pages/ForgotPasswordPage";
 import ResetPasswordPage from "@/pages/ResetPasswordPage";
 import LandingPage from "@/pages/LandingPage";
 import NotFound from "./pages/NotFound";
+import AdminUserManagementPage from "@/pages/AdminUserManagementPage";
 
 const queryClient = new QueryClient();
 
@@ -90,6 +91,14 @@ const App = () => (
                           element={
                             <ProtectedRoute allowedRoles={["ADMIN", "AUDITOR"]}>
                               <AuditLogsPage />
+                            </ProtectedRoute>
+                          }
+                        />
+                        <Route
+                          path="/admin/users"
+                          element={
+                            <ProtectedRoute allowedRoles={["ADMIN"]}>
+                              <AdminUserManagementPage />
                             </ProtectedRoute>
                           }
                         />
