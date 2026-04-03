@@ -75,7 +75,7 @@ export default function FloatsPage() {
     <div>
       <PageHeader title="Float Management" description="Allocate and manage float across branches">
         <Button onClick={() => { setModalMode("allocate"); setTopUpFloatId(undefined); setModalOpen(true); }}>
-          <Plus className="h-4 w-4 mr-1" /> Allocate Float
+          <Plus className="h-4 w-4" /> Allocate Float
         </Button>
       </PageHeader>
 
@@ -130,8 +130,8 @@ export default function FloatsPage() {
                 </div>
               </div>
               <div className="flex gap-2 mt-4">
-                <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={() => openTopUp(f.id)}>
-                  <ArrowUpCircle className="h-3 w-3 mr-1" /> Top Up
+                <Button size="sm" variant="outline" className="flex-1" aria-label="Top up this float" onClick={() => openTopUp(f.id)}>
+                  <ArrowUpCircle className="h-3 w-3" /> Top Up
                 </Button>
               </div>
             </motion.div>

@@ -35,7 +35,7 @@ export default function PoliciesPage() {
   return (
     <div>
       <PageHeader title="Policies" description="Configure spending policies and limits">
-        <Button onClick={handleCreate}><Plus className="h-4 w-4 mr-1" /> Create Policy</Button>
+        <Button onClick={handleCreate}><Plus className="h-4 w-4" /> Create Policy</Button>
       </PageHeader>
 
       {/* Summary */}
@@ -102,7 +102,7 @@ export default function PoliciesPage() {
               <div className="flex items-center gap-3">
                 <Switch checked={p.enabled} onCheckedChange={() => toggleEnabled(p.id)} />
                 <Button size="sm" variant="outline" onClick={() => handleEdit(p)}>
-                  <Edit2 className="h-3 w-3 mr-1" /> Edit
+                  <Edit2 className="h-3 w-3" /> Edit
                 </Button>
               </div>
             </div>

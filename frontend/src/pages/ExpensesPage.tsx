@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Search, Plus, Filter } from "lucide-react";
 import { getExpenses, type ExpenseResponse } from "@/api/expenseService";
 import { PageHeader } from "@/components/PageHeader";
@@ -8,13 +8,25 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SubmitExpenseModal } from "@/components/SubmitExpenseModal";
 import { motion } from "framer-motion";
+import { debounce } from "@/lib/performance";
 
 export default function ExpensesPage() {
   const [expenses, setExpenses] = useState<ExpenseResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
+
+  // Debounce search query updates
+  const debouncedSetSearch = useMemo(
+    () => debounce((query: string) => setDebouncedSearchQuery(query), 300),
+    []
+  );
+
+  useEffect(() => {
+    debouncedSetSearch(searchQuery);
+  }, [searchQuery, debouncedSetSearch]);
 
   const loadExpenses = async () => {
     setLoading(true);
@@ -30,8 +42,8 @@ export default function ExpensesPage() {
 
   const filtered = expenses.filter((exp) => {
     if (statusFilter !== "all" && exp.status !== statusFilter) return false;
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
+    if (debouncedSearchQuery) {
+      const q = debouncedSearchQuery.toLowerCase();
       return (
         String(exp.id).includes(q) ||
         exp.description.toLowerCase().includes(q) ||
@@ -52,23 +64,23 @@ export default function ExpensesPage() {
     <div>
       <PageHeader title="Expenses" description="Track and manage petty cash expenses">
         <Button onClick={() => setModalOpen(true)}>
-          <Plus className="h-4 w-4 mr-1" /> Submit Expense
+          <Plus className="h-4 w-4" /> Submit Expense
         </Button>
       </PageHeader>
 
       <div className="flex flex-wrap gap-2 mb-4">
         {statuses.map((s) => (
-          <button
+          <Button
             key={s}
             onClick={() => setStatusFilter(s)}
-            className={`rounded-lg px-3 py-1.5 text-xs font-medium capitalize transition-colors ${
-              statusFilter === s
-                ? "bg-primary text-primary-foreground"
-                : "bg-secondary text-secondary-foreground hover:bg-muted"
-            }`}
+            variant={statusFilter === s ? "default" : "secondary"}
+            size="sm"
+            className="capitalize"
+            aria-label={`Filter by ${s.toLowerCase()} expenses`}
+            aria-pressed={statusFilter === s}
           >
             {s.toLowerCase()} ({s === "all" ? expenses.length : expenses.filter((e) => e.status === s).length})
-          </button>
+          </Button>
         ))}
       </div>
 
