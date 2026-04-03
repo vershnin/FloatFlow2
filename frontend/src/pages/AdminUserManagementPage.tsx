@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Search, Plus, Filter, Edit, Trash2, UserCheck, Key, MoreHorizontal } from "lucide-react";
 import { getUsers, deactivateUser, activateUser, resetUserPassword, type AdminUser, type UserFilters } from "@/api/adminService";
 import { PageHeader } from "@/components/PageHeader";
@@ -15,6 +15,7 @@ import { ChangeRoleModal } from "@/components/ChangeRoleModal";
 import { useAuth, ROLE_LABELS, type UserRole } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
+import { debounce } from "@/lib/performance";
 
 export default function AdminUserManagementPage() {
   const { user: currentUser } = useAuth();
@@ -22,6 +23,7 @@ export default function AdminUserManagementPage() {
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState<UserFilters>({});
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [changeRoleModalOpen, setChangeRoleModalOpen] = useState(false);
@@ -30,6 +32,16 @@ export default function AdminUserManagementPage() {
     type: 'deactivate' | 'activate' | 'reset-password';
     user: AdminUser;
   } | null>(null);
+
+  // Debounce search query updates
+  const debouncedSetSearch = useMemo(
+    () => debounce((query: string) => setDebouncedSearchQuery(query), 300),
+    []
+  );
+
+  useEffect(() => {
+    debouncedSetSearch(searchQuery);
+  }, [searchQuery, debouncedSetSearch]);
 
   const loadUsers = async () => {
     setLoading(true);
@@ -46,8 +58,8 @@ export default function AdminUserManagementPage() {
   useEffect(() => { loadUsers(); }, [filters]);
 
   const filtered = users.filter((user) => {
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
+    if (debouncedSearchQuery) {
+      const q = debouncedSearchQuery.toLowerCase();
       return (
         user.name.toLowerCase().includes(q) ||
         user.email.toLowerCase().includes(q) ||
@@ -97,7 +109,7 @@ export default function AdminUserManagementPage() {
     <div>
       <PageHeader title="User Management" description="Manage user accounts, roles, and access">
         <Button onClick={() => setCreateModalOpen(true)}>
-          <Plus className="h-4 w-4 mr-1" /> Create User
+          <Plus className="h-4 w-4" /> Create User
         </Button>
       </PageHeader>
 
@@ -221,24 +233,24 @@ export default function AdminUserManagementPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => { setSelectedUser(user); setEditModalOpen(true); }}>
-                            <Edit className="h-4 w-4 mr-2" /> Edit User
+                            <Edit className="h-4 w-4" /> Edit User
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => { setSelectedUser(user); setChangeRoleModalOpen(true); }}>
-                            <UserCheck className="h-4 w-4 mr-2" /> Change Role
+                            <UserCheck className="h-4 w-4" /> Change Role
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => setConfirmAction({ type: 'reset-password', user })}>
-                            <Key className="h-4 w-4 mr-2" /> Reset Password
+                            <Key className="h-4 w-4" /> Reset Password
                           </DropdownMenuItem>
                           {user.isActive ? (
                             <DropdownMenuItem
                               onClick={() => setConfirmAction({ type: 'deactivate', user })}
                               className="text-destructive"
                             >
-                              <Trash2 className="h-4 w-4 mr-2" /> Deactivate
+                              <Trash2 className="h-4 w-4" /> Deactivate
                             </DropdownMenuItem>
                           ) : (
                             <DropdownMenuItem onClick={() => setConfirmAction({ type: 'activate', user })}>
-                              <UserCheck className="h-4 w-4 mr-2" /> Activate
+                              <UserCheck className="h-4 w-4" /> Activate
                             </DropdownMenuItem>
                           )}
                         </DropdownMenuContent>
