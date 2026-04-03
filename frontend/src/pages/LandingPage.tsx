@@ -94,10 +94,10 @@ export default function LandingPage() {
               FloatFlow digitizes float allocation, expense tracking, and petty cash management for multi-branch organizations — with policy-driven compliance and real-time visibility.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Button size="lg" asChild className="gap-2 text-base px-8">
-                <Link to="/register">Start Free Trial <ArrowRight className="h-4 w-4" /></Link>
+              <Button size="lg" asChild>
+                <Link to="/register">Start Free Trial <ArrowRight className="ml-1.5 h-4 w-4" /></Link>
               </Button>
-              <Button size="lg" variant="outline" asChild className="text-base px-8">
+              <Button size="lg" variant="outline" asChild>
                 <a href="#features">See Features</a>
               </Button>
             </div>

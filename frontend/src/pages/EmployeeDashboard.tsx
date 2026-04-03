@@ -18,7 +18,7 @@ export default function EmployeeDashboard() {
   return (
     <div>
       <PageHeader title="My Dashboard" description="Submit and track your expenses">
-        <Button><Plus className="h-4 w-4 mr-1" /> Submit Expense</Button>
+        <Button><Plus className="h-4 w-4" /> Submit Expense</Button>
       </PageHeader>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">

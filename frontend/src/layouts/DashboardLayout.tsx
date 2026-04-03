@@ -1,10 +1,12 @@
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { AppHeader } from "@/components/AppHeader";
+import { NetworkStatusIndicator } from "@/components/NetworkStatusIndicator";
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider>
+      <NetworkStatusIndicator />
       <div className="min-h-screen flex w-full">
         <AppSidebar />
         <div className="flex-1 flex flex-col min-w-0">

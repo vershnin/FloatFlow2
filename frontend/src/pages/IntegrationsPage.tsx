@@ -58,7 +58,7 @@ export default function IntegrationsPage() {
     <div>
       <PageHeader title="Integrations" description="Connect external systems and services">
         <Button variant="outline" onClick={handleExport}>
-          <Download className="h-4 w-4 mr-1" /> Export G/L CSV
+          <Download className="h-4 w-4" /> Export G/L CSV
         </Button>
       </PageHeader>
 

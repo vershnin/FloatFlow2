@@ -65,8 +65,8 @@ export default function BranchManagerDashboard() {
                 <div className="text-right">
                   <p className="text-sm font-semibold">{exp.amount}</p>
                   <div className="flex gap-1 mt-1">
-                    <Button size="sm" variant="outline" className="h-6 text-xs px-2">Reject</Button>
-                    <Button size="sm" className="h-6 text-xs px-2">Approve</Button>
+                    <Button size="sm" variant="outline" aria-label="Reject this expense">Reject</Button>
+                    <Button size="sm" aria-label="Approve this expense">Approve</Button>
                   </div>
                 </div>
               </div>
