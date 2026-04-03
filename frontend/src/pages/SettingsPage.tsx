@@ -22,7 +22,7 @@ export default function SettingsPage() {
   const [name, setName] = useState(user?.name ?? "");
   const [email, setEmail] = useState(user?.email ?? "");
   const [phone, setPhone] = useState("+254 712 345 678");
-  const [branch, setBranch] = useState(user?.branch ?? "Nairobi CBD");
+  const [branch, setBranch] = useState(user?.branchName ?? "Nairobi CBD");
 
   // Display prefs
   const [compactMode, setCompactMode] = useState(false);
@@ -136,20 +136,20 @@ export default function SettingsPage() {
               <h3 className="text-sm font-semibold mb-4">Theme</h3>
               <div className="grid grid-cols-3 gap-3 max-w-md">
                 {(["light", "dark", "system"] as const).map((t) => (
-                  <button
+                  <Button
                     key={t}
                     onClick={() => setTheme(t)}
-                    className={cn(
-                      "rounded-lg border-2 p-4 text-center transition-all",
-                      theme === t ? "border-primary bg-primary/5" : "border-transparent bg-secondary hover:bg-muted"
-                    )}
+                    variant={theme === t ? "default" : "secondary"}
+                    className="h-auto flex-col p-4"
+                    aria-label={`Set theme to ${t}`}
+                    aria-pressed={theme === t}
                   >
                     <div className={cn(
-                      "mx-auto mb-2 h-8 w-8 rounded-lg",
+                      "mb-2 h-8 w-8 rounded-lg",
                       t === "light" ? "bg-background border" : t === "dark" ? "bg-foreground" : "bg-gradient-to-br from-background to-foreground"
                     )} />
                     <p className="text-xs font-medium capitalize">{t}</p>
-                  </button>
+                  </Button>
                 ))}
               </div>
             </>
