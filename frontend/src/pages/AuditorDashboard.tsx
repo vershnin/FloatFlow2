@@ -11,7 +11,7 @@ export default function AuditorDashboard() {
   return (
     <div>
       <PageHeader title="Audit Dashboard" description="Read-only system overview and audit trail">
-        <Button variant="outline"><Download className="h-4 w-4 mr-1" /> Export Audit Report</Button>
+        <Button variant="outline"><Download className="h-4 w-4" /> Export Audit Report</Button>
       </PageHeader>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
