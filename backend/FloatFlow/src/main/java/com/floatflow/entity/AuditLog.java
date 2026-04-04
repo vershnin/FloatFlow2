@@ -11,9 +11,6 @@ import java.time.LocalDateTime;
 /**
  * IMMUTABLE audit trail for every significant action in the system.
  * Once written, records are never updated or deleted — this ensures compliance.
- *
- * Uses a checksum to detect if records have been tampered with.
- * Examples: "User 5 submitted expense 12", "Finance approved float #3"
  */
 @Entity
 @Table(name = "audit_logs", indexes = {
@@ -33,6 +30,13 @@ public class AuditLog {
 
     // Who performed the action (user ID)
     private Long userId;
+
+    /** User name and email are stored separately for better security**/
+    @Column(length = 255)
+    private String userName;
+
+    @Column(length = 255)
+    private String userEmail;
 
     // What action was performed (e.g., "FLOAT_CREATED", "EXPENSE_APPROVED")
     @Column(nullable = false)
@@ -54,11 +58,25 @@ public class AuditLog {
     @Column(nullable = false)
     private String checksum;
 
+    // IP address of the user performing the action
+    @Column(length = 64)
+    private String ipAddress;
+
+    // Severity level (e.g., "INFO", "WARNING", "ERROR")
+    @Builder.Default
+    @Column(nullable = false, length = 16)
+    private String severity = "INFO";
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime timestamp;
 
     @PrePersist
     protected void onCreate() {
         this.timestamp = LocalDateTime.now();
+        if (this.severity == null) this.severity = "INFO";
+    }
+
+    public  LocalDateTime getCreatedAt() {
+        return this.timestamp;
     }
 }
