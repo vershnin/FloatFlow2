@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -10,6 +10,13 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Wallet, Eye, EyeOff, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
+import apiClient from "@/api/apiClient";
+
+interface Branch {
+  id: number;
+  name: string;
+  location: string;
+}
 
 const registerSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -21,25 +28,35 @@ const registerSchema = z.object({
 
 type RegisterForm = z.infer<typeof registerSchema>;
 
-const branches = [
-  { id: 1, name: "Nairobi CBD" },
-  { id: 2, name: "Kisumu" },
-  { id: 3, name: "Nakuru" },
-  { id: 4, name: "Mombasa" },
-];
 
 export default function RegisterPage() {
   const { register: registerUser, isLoading } = useAuth();
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [branchesLoading, setBranchesLoading] = useState(true);
+
+  // Fetch real branches from API
+  useEffect(() => {
+    apiClient.get("/branches")
+      .then((res) => {
+        const data = res.data?.data ?? res.data ?? [];
+        setBranches(Array.isArray(data) ? data : []);
+      })
+      .catch(() => {
+        toast.error("Failed to load branches. Check your connection.");
+      })
+      .finally(() => {
+        setBranchesLoading(false);
+      });
+    }, []);
 
   const {
     register,
     handleSubmit,
     formState: { errors },
     setValue,
-    watch,
   } = useForm<RegisterForm>({
     resolver: zodResolver(registerSchema),
   });
