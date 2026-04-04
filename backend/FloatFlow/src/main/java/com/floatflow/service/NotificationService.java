@@ -30,9 +30,9 @@ public class NotificationService {
         if (user == null) return;
 
         Notification notification = Notification.builder()
-            .user(user)
-            .message(message)
-            .build();
+                .user(user)
+                .message(message)
+                .build();
         notificationRepository.save(notification);
 
         // TODO: Push via WebSocket — socketService.sendToUser(userId, message);
@@ -45,10 +45,10 @@ public class NotificationService {
     @Transactional
     public void notifyBranchManagers(Long branchId, String message) {
         List<User> managers = userRepository.findAll().stream()
-            .filter(u -> u.getRole() == Role.BRANCH_MANAGER
-                && u.getBranch() != null
-                && u.getBranch().getId().equals(branchId))
-            .toList();
+                .filter(u -> u.getRole() == Role.BRANCH_MANAGER
+                        && u.getBranch() != null
+                        && u.getBranch().getId().equals(branchId))
+                .toList();
 
         managers.forEach(manager -> notifyUser(manager.getId(), message));
     }
@@ -69,5 +69,15 @@ public class NotificationService {
 
     public long getUnreadCount(Long userId) {
         return notificationRepository.countByUserIdAndIsReadFalse(userId);
+    }
+
+    /**
+     * Marks every unread notification for a user as read in one batch.
+     */
+    @Transactional
+    public void markAllAsRead(Long userId) {
+        List<Notification> unread = notificationRepository.findByUserIdAndIsReadFalse(userId);
+        unread.forEach(n -> n.setRead(true));
+        notificationRepository.saveAll(unread);
     }
 }
