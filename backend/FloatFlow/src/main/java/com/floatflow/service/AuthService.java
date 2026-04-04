@@ -21,7 +21,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Handles user registration and login.
- *
  * @Transactional ensures that if anything fails mid-operation,
  * all database changes are rolled back (atomicity).
  */
@@ -47,24 +46,24 @@ public class AuthService {
         Branch branch = null;
         if (request.getBranchId() != null) {
             branch = branchRepository.findById(request.getBranchId())
-                .orElseThrow(() -> new ResourceNotFoundException("Branch not found: " + request.getBranchId()));
+                    .orElseThrow(() -> new ResourceNotFoundException("Branch not found: " + request.getBranchId()));
         }
 
         // Build and save the user entity — password is hashed with BCrypt
         User user = User.builder()
-            .name(request.getName())
-            .email(request.getEmail())
-            .password(passwordEncoder.encode(request.getPassword()))
-            .role(request.getRole())
-            .branch(branch)
-            .build();
+                .name(request.getName())
+                .email(request.getEmail())
+                .password(passwordEncoder.encode(request.getPassword()))
+                .role(request.getRole())
+                .branch(branch)
+                .build();
 
         user = userRepository.save(user);
         log.info("New user registered: {} with role {}", user.getEmail(), user.getRole());
 
         // Write audit log (async — won't slow down the response)
         auditService.log(user.getId(), AuditService.USER_REGISTERED, "User", user.getId(),
-            "Role: " + user.getRole());
+                "Role: " + user.getRole());
 
         String token = jwtService.generateToken(user);
         return buildAuthResponse(user, token);
@@ -73,11 +72,11 @@ public class AuthService {
     public AuthResponse login(LoginRequest request) {
         // Throws BadCredentialsException if credentials are wrong
         authenticationManager.authenticate(
-            new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
+                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
         );
 
         User user = userRepository.findByEmail(request.getEmail())
-            .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         auditService.log(user.getId(), AuditService.USER_LOGIN, "User", user.getId(), null);
 
@@ -87,12 +86,14 @@ public class AuthService {
 
     private AuthResponse buildAuthResponse(User user, String token) {
         return AuthResponse.builder()
-            .token(token)
-            .email(user.getEmail())
-            .name(user.getName())
-            .role(user.getRole())
-            .userId(user.getId())
-            .branchId(user.getBranch() != null ? user.getBranch().getId() : null)
-            .build();
+                .token(token)
+                .email(user.getEmail())
+                .name(user.getName())
+                .role(user.getRole())
+                .userId(user.getId())
+                .branchId(user.getBranch() != null ? user.getBranch().getId() : null)
+                .isActive(user.isEnabled())
+                .createdAt(user.getCreatedAt())
+                .build();
     }
 }
