@@ -15,7 +15,7 @@ const dashboardMap: Record<UserRole, React.ComponentType> = {
 
 export default function RoleDashboard() {
   const { user } = useAuth();
-  const role = user?.role ?? "admin";
+  const role = user?.role ?? "ADMIN";
   const Component = dashboardMap[role];
   return <Component />;
 }
