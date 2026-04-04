@@ -1,5 +1,6 @@
 package com.floatflow.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.floatflow.entity.Role;
 import com.floatflow.entity.User;
 import lombok.Builder;
@@ -14,7 +15,10 @@ public class UserResponse {
     private String name;
     private String email;
     private Role role;
+
+    @JsonProperty("isActive")
     private boolean active;
+
     private Long branchId;
     private String branchName;
     private LocalDateTime createdAt;
