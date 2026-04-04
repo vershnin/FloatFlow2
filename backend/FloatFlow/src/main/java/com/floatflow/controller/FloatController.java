@@ -23,11 +23,6 @@ import java.util.List;
 
 /**
  * Float management endpoints.
- *
- * @AuthenticationPrincipal User currentUser — Spring Security injects the
- * currently logged-in user automatically. No need to parse the JWT manually.
- *
- * @PreAuthorize enforces role-based access at the method level.
  */
 @RestController
 @RequestMapping("/api/floats")
@@ -43,17 +38,17 @@ public class FloatController {
     @PreAuthorize("hasAnyRole('FINANCE_OFFICER', 'ADMIN')")
     @Operation(summary = "Create a new float allocation for a branch")
     public ResponseEntity<ApiResponse<FloatResponse>> createFloat(
-        @Valid @RequestBody CreateFloatRequest request,
-        @AuthenticationPrincipal User currentUser
+            @Valid @RequestBody CreateFloatRequest request,
+            @AuthenticationPrincipal User currentUser
     ) {
         FloatResponse response = floatService.createFloat(request, currentUser);
         return ResponseEntity.status(HttpStatus.CREATED)
-            .body(ApiResponse.success("Float created successfully", response));
+                .body(ApiResponse.success("Float created successfully", response));
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('FINANCE_OFFICER', 'ADMIN', 'AUDITOR')")
-    @Operation(summary = "Get all floats")
+    @PreAuthorize("hasAnyRole('FINANCE_OFFICER', 'ADMIN', 'AUDITOR', 'BRANCH_MANAGER')")
+    @Operation(summary = "Get all floats (Finance, Admin, Auditor, Branch Manager)")
     public ResponseEntity<ApiResponse<List<FloatResponse>>> getAllFloats() {
         return ResponseEntity.ok(ApiResponse.success("Floats retrieved", floatService.getAllFloats()));
     }
@@ -62,12 +57,23 @@ public class FloatController {
     @PreAuthorize("hasAnyRole('FINANCE_OFFICER', 'ADMIN')")
     @Operation(summary = "Top up a float balance")
     public ResponseEntity<ApiResponse<FloatResponse>> topUp(
-        @PathVariable Long id,
-        @Valid @RequestBody TopUpFloatRequest request,
-        @AuthenticationPrincipal User currentUser
+            @PathVariable Long id,
+            @Valid @RequestBody TopUpFloatRequest request,
+            @AuthenticationPrincipal User currentUser
     ) {
         FloatResponse response = floatService.topUp(id, request, currentUser);
         return ResponseEntity.ok(ApiResponse.success("Float topped up successfully", response));
+    }
+
+    @PutMapping("/{id}/close")
+    @PreAuthorize("hasAnyRole('FINANCE_OFFICER', 'ADMIN')")
+    @Operation(summary = "Close a float allocation")
+    public ResponseEntity<ApiResponse<FloatResponse>> closeFloat(
+            @PathVariable Long id,
+            @AuthenticationPrincipal User currentUser
+    ) {
+        FloatResponse response = floatService.closeFloat(id, currentUser);
+        return ResponseEntity.ok(ApiResponse.success("Float closed successfully", response));
     }
 
     @GetMapping("/{id}/transactions")
@@ -75,7 +81,7 @@ public class FloatController {
     @Operation(summary = "Get transaction history for a float")
     public ResponseEntity<ApiResponse<List<FloatTransaction>>> getTransactions(@PathVariable Long id) {
         List<FloatTransaction> transactions =
-            floatTransactionRepository.findByFloatAllocationIdOrderByCreatedAtDesc(id);
+                floatTransactionRepository.findByFloatAllocationIdOrderByCreatedAtDesc(id);
         return ResponseEntity.ok(ApiResponse.success("Transactions retrieved", transactions));
     }
 }
