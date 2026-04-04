@@ -1,8 +1,9 @@
 import axios, { AxiosError } from "axios";
 import { toast } from "sonner";
+import { SecureStorage, isTokenExpired } from "../lib/security";
 
 const apiClient = axios.create({
-  baseURL: "/api",
+  baseURL: import.meta.env.VITE_API_BASE_URL || "/api",
   headers: {
     "Content-Type": "application/json",
   },
@@ -11,8 +12,16 @@ const apiClient = axios.create({
 // Attach JWT token from localStorage to every request
 apiClient.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("ff_token");
+    const token = SecureStorage.getItem("ff_token");
     if (token) {
+      // Check if token is expired before using it
+      if (isTokenExpired(token)) {
+        SecureStorage.removeItem("ff_token");
+        SecureStorage.removeItem("ff_user");
+        window.location.href = "/login";
+        toast.error("Session expired. Please sign in again.");
+        return Promise.reject(new Error("Token expired"));
+      }
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
@@ -26,8 +35,8 @@ apiClient.interceptors.response.use(
   (error: AxiosError<{ success: boolean; message: string }>) => {
     if (error.response) {
       if (error.response.status === 401) {
-        localStorage.removeItem("ff_token");
-        localStorage.removeItem("ff_user");
+        SecureStorage.removeItem("ff_token");
+        SecureStorage.removeItem("ff_user");
         window.location.href = "/login";
         toast.error("Session expired. Please sign in again.");
         return Promise.reject(error);
