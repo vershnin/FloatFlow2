@@ -38,10 +38,10 @@ export interface UserFilters {
 
 export const getUsers = async (filters?: UserFilters): Promise<AdminUser[]> => {
   const params = new URLSearchParams();
-  if (filters?.search) params.append("search", filters.search);
-  if (filters?.role) params.append("role", filters.role);
+  if (filters?.search)    params.append("search",   filters.search);
+  if (filters?.role)      params.append("role",     filters.role);
   if (filters?.isActive !== undefined) params.append("isActive", filters.isActive.toString());
-  if (filters?.branchId) params.append("branchId", filters.branchId.toString());
+  if (filters?.branchId)  params.append("branchId", filters.branchId.toString());
 
   const res = await apiClient.get(`/admin/users?${params.toString()}`);
   return res.data.data;
@@ -62,20 +62,25 @@ export const updateUser = async (id: string, data: UpdateUserRequest): Promise<A
   return res.data.data;
 };
 
-export const deactivateUser = async (id: string): Promise<void> => {
-  await apiClient.delete(`/admin/users/${id}`);
+// FIX: was DELETE /admin/users/{id} — backend uses PATCH /{id}/deactivate
+export const deactivateUser = async (id: string): Promise<AdminUser> => {
+  const res = await apiClient.patch(`/admin/users/${id}/deactivate`);
+  return res.data.data;
 };
 
 export const activateUser = async (id: string): Promise<AdminUser> => {
-  const res = await apiClient.post(`/admin/users/${id}/activate`);
+  const res = await apiClient.patch(`/admin/users/${id}/activate`);
   return res.data.data;
 };
 
 export const changeUserRole = async (id: string, role: UserRole): Promise<AdminUser> => {
-  const res = await apiClient.put(`/admin/users/${id}/role`, { role });
+  const res = await apiClient.patch(`/admin/users/${id}/role`, { role });
   return res.data.data;
 };
 
-export const resetUserPassword = async (id: string): Promise<void> => {
-  await apiClient.post(`/admin/users/${id}/reset-password`);
+export const resetUserPassword = async (
+  id: string,
+  newPassword: string = "FloatFlow@Reset1"
+): Promise<void> => {
+  await apiClient.patch(`/admin/users/${id}/reset-password`, { newPassword });
 };

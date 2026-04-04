@@ -93,7 +93,7 @@ export default function AdminUserManagementPage() {
   const handleResetPassword = async (user: AdminUser) => {
     try {
       await resetUserPassword(user.id);
-      toast.success(`Password reset email sent to ${user.email}`);
+      toast.success(`Password for ${user.name} reset to temporary password: FloatFlow@Reset1`);
     } catch (error) {
       toast.error("Failed to reset password");
     }
