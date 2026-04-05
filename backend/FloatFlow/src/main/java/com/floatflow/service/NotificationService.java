@@ -21,36 +21,55 @@ public class NotificationService {
     private final UserRepository userRepository;
 
     /**
-     * Send notification to a specific user.
-     * Future: Also push via WebSocket here.
+     * Send notification to a specific user (simple 2-arg overload).
      */
     @Transactional
     public void notifyUser(Long userId, String message) {
+        notifyUser(userId, null, null, message, null);
+    }
+
+    /**
+     * Send a rich notification to a specific user.
+     * Future: Also push via WebSocket here.
+     */
+    @Transactional
+    public void notifyUser(Long userId, String type, String title, String message, String link) {
         User user = userRepository.findById(userId).orElse(null);
         if (user == null) return;
 
         Notification notification = Notification.builder()
                 .user(user)
+                .type(type)
+                .title(title)
                 .message(message)
+                .link(link)
                 .build();
         notificationRepository.save(notification);
 
-        // TODO: Push via WebSocket — socketService.sendToUser(userId, message);
+        // TODO: Push via WebSocket — socketService.sendToUser(userId, notification);
         log.debug("Notification sent to user {}: {}", userId, message);
     }
 
     /**
-     * Notify all branch managers for a given branch.
+     * Notify all branch managers for a given branch (simple 2-arg overload).
      */
     @Transactional
     public void notifyBranchManagers(Long branchId, String message) {
+        notifyBranchManagers(branchId, null, null, message, null);
+    }
+
+    /**
+     * Notify all branch managers for a given branch with rich notification data.
+     */
+    @Transactional
+    public void notifyBranchManagers(Long branchId, String type, String title, String message, String link) {
         List<User> managers = userRepository.findAll().stream()
                 .filter(u -> u.getRole() == Role.BRANCH_MANAGER
                         && u.getBranch() != null
                         && u.getBranch().getId().equals(branchId))
                 .toList();
 
-        managers.forEach(manager -> notifyUser(manager.getId(), message));
+        managers.forEach(manager -> notifyUser(manager.getId(), type, title, message, link));
     }
 
     public List<Notification> getMyNotifications(Long userId) {

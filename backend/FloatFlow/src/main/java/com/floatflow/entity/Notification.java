@@ -30,8 +30,17 @@ public class Notification {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    @Column(length = 100)
+    private String type;
+
+    @Column(length = 200)
+    private String title;
+
     @Column(nullable = false, length = 500)
     private String message;
+
+    @Column(length = 300)
+    private String link;
 
     @Builder.Default
     private boolean isRead = false;
