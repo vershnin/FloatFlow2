@@ -31,9 +31,20 @@ export function AllocateFloatModal({ open, onClose, mode, floatId }: AllocateFlo
 
   useEffect(() => {
     if (open && mode === "allocate") {
-      apiClient.get("/branches").then((res) => setBranches(res.data.data)).catch(() => {});
+      apiClient.get("/branches")
+        .then((res) => setBranches(res.data.data ?? []))
+        .catch(() => toast.error("Could not load branches"));
     }
   }, [open, mode]);
+
+  // Reset form state when modal opens
+  useEffect(() => {
+    if (open) {
+      setAmount("");
+      setReference("");
+      setBranchId("");
+    }
+  }, [open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,17 +56,23 @@ export function AllocateFloatModal({ open, onClose, mode, floatId }: AllocateFlo
       toast.error("Please select a branch");
       return;
     }
+
     setIsSubmitting(true);
     try {
       if (mode === "allocate") {
         await createFloat({ branchId: Number(branchId), initialAmount: Number(amount) });
         toast.success(`Float allocated — KES ${Number(amount).toLocaleString()}`);
       } else if (floatId) {
-        await topUpFloat(floatId, { amount: Number(amount) });
+        await topUpFloat(floatId, { amount: Number(amount), reference: reference || undefined });
         toast.success(`Float topped up — KES ${Number(amount).toLocaleString()}`);
       }
-      setBranchId(""); setAmount(""); setReference("");
       onClose();
+    } catch (error: any) {
+    
+      const msg = error?.response?.data?.message;
+      if (!msg) {
+        toast.error(mode === "allocate" ? "Failed to allocate float" : "Failed to top up float");
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -83,14 +100,27 @@ export function AllocateFloatModal({ open, onClose, mode, floatId }: AllocateFlo
           )}
           <div className="space-y-2">
             <Label>Amount (KES) *</Label>
-            <Input type="number" min="1" placeholder="e.g. 100000" value={amount} onChange={(e) => setAmount(e.target.value)} required />
+            <Input
+              type="number"
+              min="1"
+              placeholder="e.g. 100000"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              required
+            />
           </div>
           <div className="space-y-2">
             <Label>Reference / Notes</Label>
-            <Textarea placeholder="e.g. Q1 allocation, Emergency top-up..." value={reference} onChange={(e) => setReference(e.target.value)} />
+            <Textarea
+              placeholder="e.g. Q1 allocation, Emergency top-up..."
+              value={reference}
+              onChange={(e) => setReference(e.target.value)}
+            />
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+            <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
+              Cancel
+            </Button>
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? "Processing..." : mode === "allocate" ? "Allocate" : "Top Up"}
             </Button>
