@@ -40,14 +40,17 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(
         HttpSecurity http,
-        JwtAuthenticationFilter jwtAuthFilter
+        JwtAuthenticationFilter jwtAuthFilter,
+        com.floatflow.security.CustomAuthenticationEntryPoint authEntryPoint
     ) throws Exception {
         http
             .csrf(AbstractHttpConfigurer::disable)
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+            .exceptionHandling(ex -> ex.authenticationEntryPoint(authEntryPoint))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(
                     "/api/auth/**",
+                    "/api/branches",
                     "/swagger-ui/**",
                     "/swagger-ui.html",
                     "/api-docs/**",
