@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -33,23 +34,35 @@ public class ReportingService {
         Branch branch = branchRepository.findById(branchId)
             .orElseThrow(() -> new ResourceNotFoundException("Branch not found: " + branchId));
 
-        // Sum of all active float allocations for this branch
-        BigDecimal totalFloat = floatRepository.findByBranchId(branchId).stream()
-            .filter(f -> f.getStatus() == FloatStatus.ACTIVE)
-            .map(f -> f.getCurrentBalance())
+        // Sum of all non-closed float allocations for this branch
+        List<com.floatflow.entity.Float> activeFloats = floatRepository.findByBranchId(branchId).stream()
+            .filter(f -> f.getStatus() == FloatStatus.ACTIVE || f.getStatus() == FloatStatus.EXHAUSTED)
+            .collect(Collectors.toList());
+
+        BigDecimal totalInitial = activeFloats.stream()
+            .map(com.floatflow.entity.Float::getInitialAmount)
             .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        BigDecimal totalApproved = expenseRepository.sumApprovedByBranch(branchId);
-        Long pendingCount = expenseRepository.countByBranchAndStatus(branchId, ExpenseStatus.PENDING);
-        Long approvedCount = expenseRepository.countByBranchAndStatus(branchId, ExpenseStatus.APPROVED);
-        Long rejectedCount = expenseRepository.countByBranchAndStatus(branchId, ExpenseStatus.REJECTED);
+        BigDecimal remainingBalance = activeFloats.stream()
+            .map(com.floatflow.entity.Float::getCurrentBalance)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal totalApproved = Optional.ofNullable(expenseRepository.sumApprovedByBranch(branchId))
+            .orElse(BigDecimal.ZERO);
+
+        Long pendingCount = Optional.ofNullable(expenseRepository.countByBranchAndStatus(branchId, ExpenseStatus.PENDING))
+            .orElse(0L);
+        Long approvedCount = Optional.ofNullable(expenseRepository.countByBranchAndStatus(branchId, ExpenseStatus.APPROVED))
+            .orElse(0L);
+        Long rejectedCount = Optional.ofNullable(expenseRepository.countByBranchAndStatus(branchId, ExpenseStatus.REJECTED))
+            .orElse(0L);
 
         return BranchReportResponse.builder()
             .branchId(branchId)
             .branchName(branch.getName())
-            .totalFloatAllocated(totalFloat)
+            .totalFloatAllocated(totalInitial)
             .totalExpensesApproved(totalApproved)
-            .remainingFloat(totalFloat.subtract(totalApproved))
+            .remainingFloat(remainingBalance)
             .pendingExpensesCount(pendingCount)
             .approvedExpensesCount(approvedCount)
             .rejectedExpensesCount(rejectedCount)
