@@ -19,11 +19,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * Handles user registration and login.
- * @Transactional ensures that if anything fails mid-operation,
- * all database changes are rolled back (atomicity).
- */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -38,7 +33,6 @@ public class AuthService {
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
-        // Check if email is already taken
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new BadRequestException("Email already registered: " + request.getEmail());
         }
@@ -49,7 +43,6 @@ public class AuthService {
                     .orElseThrow(() -> new ResourceNotFoundException("Branch not found: " + request.getBranchId()));
         }
 
-        // Build and save the user entity — password is hashed with BCrypt
         User user = User.builder()
                 .name(request.getName())
                 .email(request.getEmail())
@@ -61,16 +54,20 @@ public class AuthService {
         user = userRepository.save(user);
         log.info("New user registered: {} with role {}", user.getEmail(), user.getRole());
 
-        // Write audit log (async — won't slow down the response)
-        auditService.log(user.getId(), AuditService.USER_REGISTERED, "User", user.getId(),
-                "Role: " + user.getRole());
+        // FIX: Pass userName and userEmail directly to avoid async timing race.
+        // The 5-arg log() resolves the user inside a new async transaction which
+        // can fire before the parent transaction commits, causing NPE on user.getName().
+        auditService.log(
+                user.getId(), user.getName(), user.getEmail(),
+                AuditService.USER_REGISTERED, "User", user.getId(),
+                "Role: " + user.getRole()
+        );
 
         String token = jwtService.generateToken(user);
         return buildAuthResponse(user, token);
     }
 
     public AuthResponse login(LoginRequest request) {
-        // Throws BadCredentialsException if credentials are wrong
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
         );
@@ -78,7 +75,10 @@ public class AuthService {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        auditService.log(user.getId(), AuditService.USER_LOGIN, "User", user.getId(), null);
+        auditService.log(
+                user.getId(), user.getName(), user.getEmail(),
+                AuditService.USER_LOGIN, "User", user.getId(), null
+        );
 
         String token = jwtService.generateToken(user);
         return buildAuthResponse(user, token);
