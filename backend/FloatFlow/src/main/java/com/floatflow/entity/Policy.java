@@ -1,5 +1,7 @@
 package com.floatflow.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -10,10 +12,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
- * Defines spending rules/limits that the Policy Engine enforces.
- * Can be global or branch-specific (branch = null means global).
- *
- * Example: "TRAVEL expenses cannot exceed 5,000 per day at Nairobi Branch"
+ * Defines spending rules/limits enforced by the PolicyEngine.
  */
 @Entity
 @Table(name = "policies")
@@ -33,20 +32,27 @@ public class Policy {
     @Column(nullable = false)
     private String category;
 
-    // Max amount per single expense
     @Column(nullable = false, precision = 15, scale = 2)
     private BigDecimal maxAmount;
 
-    // Max total expenses per day for this category
     @Column(nullable = false, precision = 15, scale = 2)
     private BigDecimal dailyLimit;
 
-    // Null = policy applies to all branches; set to restrict to one branch
+    // LAZY relationship — @JsonIgnore prevents LazyInitializationException
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "branch_id")
     private Branch branch;
 
+    // Expose branchId safely — no proxy traversal
+    @Transient
+    @JsonProperty("branchId")
+    public Long getBranchId() {
+        return branch != null ? branch.getId() : null;
+    }
+
     @Builder.Default
+    @JsonProperty("enabled")
     private boolean isActive = true;
 
     @Column(nullable = false, updatable = false)
