@@ -1,0 +1,62 @@
+package com.floatflow.controller;
+
+import com.floatflow.dto.request.CreateBranchRequest;
+import com.floatflow.dto.response.ApiResponse;
+import com.floatflow.entity.Branch;
+import com.floatflow.service.BranchService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/branches")
+@RequiredArgsConstructor
+@Tag(name = "Branches", description = "Branch management (Admins only)")
+@SecurityRequirement(name = "bearerAuth")
+public class BranchController {
+
+    private final BranchService branchService;
+
+    @GetMapping
+    @PreAuthorize("permitAll()")
+    public ResponseEntity<ApiResponse<List<Branch>>> getAllBranches() {
+        return ResponseEntity.ok(ApiResponse.success("Branches retrieved", branchService.getAllBranches()));
+    }
+
+    @GetMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Branch>> getBranchById(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success("Branch retrieved", branchService.getBranchById(id)));
+    }
+
+    @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Branch>> createBranch(@Valid @RequestBody CreateBranchRequest request) {
+        Branch branch = branchService.createBranch(request);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success("Branch created successfully", branch));
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Branch>> updateBranch(
+            @PathVariable Long id,
+            @Valid @RequestBody CreateBranchRequest request) {
+        Branch branch = branchService.updateBranch(id, request);
+        return ResponseEntity.ok(ApiResponse.success("Branch updated successfully", branch));
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> deleteBranch(@PathVariable Long id) {
+        branchService.deleteBranch(id);
+        return ResponseEntity.ok(ApiResponse.success("Branch deleted successfully", null));
+    }
+}
