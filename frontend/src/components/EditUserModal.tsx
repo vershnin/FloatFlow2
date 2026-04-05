@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { updateUser, type AdminUser, type UpdateUserRequest } from "@/api/adminService";
+import { updateUser, activateUser, deactivateUser, type AdminUser, type UpdateUserRequest } from "@/api/adminService";
 import { getFloats, type FloatResponse } from "@/api/floatService";
 import { toast } from "sonner";
 
@@ -17,12 +17,12 @@ interface EditUserModalProps {
 }
 
 export function EditUserModal({ open, user, onClose, onSuccess }: EditUserModalProps) {
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+  const [name, setName]         = useState("");
+  const [email, setEmail]       = useState("");
   const [branchId, setBranchId] = useState("");
   const [isActive, setIsActive] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [floats, setFloats] = useState<FloatResponse[]>([]);
+  const [floats, setFloats]     = useState<FloatResponse[]>([]);
 
   useEffect(() => {
     if (open && user) {
@@ -36,7 +36,6 @@ export function EditUserModal({ open, user, onClose, onSuccess }: EditUserModalP
     }
   }, [open, user]);
 
-  // Get unique branches from floats
   const branches = Array.from(
     new Map(floats.map(f => [f.branchId, { id: f.branchId, name: f.branchName }])).values()
   );
@@ -48,25 +47,28 @@ export function EditUserModal({ open, user, onClose, onSuccess }: EditUserModalP
       return;
     }
 
-    const data: UpdateUserRequest = {
-      name,
-      email,
-      isActive,
-    };
-
-    if (branchId) {
-      data.branchId = Number(branchId);
-    } else {
-      data.branchId = undefined; // Allow clearing branch
-    }
-
     setIsSubmitting(true);
     try {
+      const data: UpdateUserRequest = { name, email };
+      if (branchId) {
+        data.branchId = Number(branchId);
+      } else {
+        data.branchId = undefined;
+      }
       await updateUser(user.id, data);
+
+      if (isActive !== user.isActive) {
+        if (isActive) {
+          await activateUser(user.id);
+        } else {
+          await deactivateUser(user.id);
+        }
+      }
+
       toast.success("User updated successfully");
       onSuccess();
     } catch (error) {
-      // Error handled by interceptor
+      // Error handled by apiClient interceptor toast
     } finally {
       setIsSubmitting(false);
     }
@@ -129,7 +131,7 @@ export function EditUserModal({ open, user, onClose, onSuccess }: EditUserModalP
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
+            <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
               Cancel
             </Button>
             <Button type="submit" disabled={isSubmitting}>
