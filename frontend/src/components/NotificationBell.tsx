@@ -1,12 +1,18 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Bell, Receipt, CheckCircle2, XCircle, AlertTriangle, ShieldCheck, Settings2 } from "lucide-react";
-import { notifications, type Notification } from "@/mockData/enterprise";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import {
+  getNotifications,
+  markNotificationAsRead,
+  markAllNotificationsRead,
+  Notification,
+} from "@/api/notificationService";
+import { notifications as mockNotifications } from "@/mockData/enterprise";
 
 const typeIcons: Record<string, React.ElementType> = {
   expense_submitted: Receipt,
@@ -28,36 +34,85 @@ const typeColors: Record<string, string> = {
 
 export function NotificationBell() {
   const navigate = useNavigate();
-  const [items, setItems] = useState(notifications);
+  const [items, setItems] = useState<Notification[]>([]);
   const [open, setOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
   const unreadCount = items.filter((n) => !n.read).length;
 
-  // Simulate a new notification arriving after 8 seconds
+  const loadNotifications = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const res = await getNotifications();
+      if (Array.isArray(res) && res.length > 0) {
+        setItems(res);
+      } else {
+        setItems(mockNotifications);
+      }
+    } catch (error) {
+      console.error("Failed to load notifications", error);
+      setItems(mockNotifications);
+      toast.error("Unable to load notifications. Using cached data.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
-    const timer = setTimeout(() => {
-      const newNotif: Notification = {
-        id: `N-${Date.now()}`,
-        type: "expense_submitted",
-        title: "New Expense Submitted",
-        message: "James Maina submitted EXP-112 (KES 4,600) for Office Supplies",
-        timestamp: new Date().toLocaleString("en-GB", { hour12: false, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }).replace(",", ""),
-        read: false,
-        link: "/approvals",
-      };
-      setItems((prev) => [newNotif, ...prev]);
-      toast("New Expense Submitted", {
-        description: "James Maina submitted EXP-112 (KES 4,600)",
-        action: { label: "View", onClick: () => navigate("/approvals") },
-      });
-    }, 8000);
-    return () => clearTimeout(timer);
+    loadNotifications();
+  }, [loadNotifications]);
+
+  useEffect(() => {
+    const interval = window.setInterval(async () => {
+      try {
+        const latest = await getNotifications();
+        if (!Array.isArray(latest) || latest.length === 0) return;
+
+        setItems((prev) => {
+          const existingIds = new Set(prev.map((n) => n.id));
+          const newItems = latest.filter((n) => !existingIds.has(n.id));
+          if (newItems.length === 0) return prev;
+
+          newItems.forEach((n) => {
+            toast(n.title, {
+              description: n.message,
+              action: n.link ? { label: "View", onClick: () => navigate(n.link!) } : undefined,
+            });
+          });
+          return [...newItems, ...prev].slice(0, 50);
+        });
+      } catch (error) {
+        console.error("Polling notifications failed", error);
+      }
+    }, 15000);
+
+    return () => window.clearInterval(interval);
   }, [navigate]);
 
-  const markAllRead = () => setItems((prev) => prev.map((n) => ({ ...n, read: true })));
+  const markAllRead = async () => {
+    try {
+      await markAllNotificationsRead();
+    } catch (error) {
+      console.warn("Mark all notifications as read failed", error);
+    } finally {
+      setItems((prev) => prev.map((n) => ({ ...n, read: true })));
+    }
+  };
 
-  const handleClick = (n: Notification) => {
-    setItems((prev) => prev.map((item) => item.id === n.id ? { ...item, read: true } : item));
-    if (n.link) { navigate(n.link); setOpen(false); }
+  const handleClick = async (notification: Notification) => {
+    try {
+      if (!notification.read) {
+        await markNotificationAsRead(notification.id);
+      }
+    } catch (error) {
+      console.warn("Mark notification read failed", error);
+    } finally {
+      setItems((prev) => prev.map((n) => n.id === notification.id ? { ...n, read: true } : n));
+      if (notification.link) {
+        navigate(notification.link);
+        setOpen(false);
+      }
+    }
   };
 
   return (
@@ -80,7 +135,9 @@ export function NotificationBell() {
           )}
         </div>
         <ScrollArea className="h-[380px]">
-          {items.length === 0 ? (
+          {isLoading ? (
+            <div className="p-8 text-center text-sm text-muted-foreground">Loading notifications...</div>
+          ) : items.length === 0 ? (
             <div className="p-8 text-center text-sm text-muted-foreground">No notifications</div>
           ) : (
             items.map((n) => {
@@ -89,9 +146,7 @@ export function NotificationBell() {
                 <button
                   key={n.id}
                   onClick={() => handleClick(n)}
-                  className={cn("flex items-start gap-3 w-full text-left px-4 py-3 border-b last:border-0 hover:bg-muted/50 transition-colors",
-                    !n.read && "bg-primary/5"
-                  )}
+                  className={cn("flex items-start gap-3 w-full text-left px-4 py-3 border-b last:border-0 hover:bg-muted/50 transition-colors", !n.read && "bg-primary/5")}
                 >
                   <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-full mt-0.5", typeColors[n.type])}>
                     <Icon className="h-4 w-4" />
