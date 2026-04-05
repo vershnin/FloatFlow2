@@ -32,6 +32,8 @@ const typeColors: Record<string, string> = {
   system: "text-muted-foreground bg-muted",
 };
 
+const defaultTypeColor = "text-muted-foreground bg-muted";
+
 export function NotificationBell() {
   const navigate = useNavigate();
   const [items, setItems] = useState<Notification[]>([]);
@@ -141,14 +143,15 @@ export function NotificationBell() {
             <div className="p-8 text-center text-sm text-muted-foreground">No notifications</div>
           ) : (
             items.map((n) => {
-              const Icon = typeIcons[n.type];
+              const Icon = typeIcons[n.type] ?? Bell;
+              const iconColor = typeColors[n.type] ?? defaultTypeColor;
               return (
                 <button
                   key={n.id}
                   onClick={() => handleClick(n)}
                   className={cn("flex items-start gap-3 w-full text-left px-4 py-3 border-b last:border-0 hover:bg-muted/50 transition-colors", !n.read && "bg-primary/5")}
                 >
-                  <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-full mt-0.5", typeColors[n.type])}>
+                  <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-full mt-0.5", iconColor)}>
                     <Icon className="h-4 w-4" />
                   </div>
                   <div className="flex-1 min-w-0">

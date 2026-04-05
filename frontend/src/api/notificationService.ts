@@ -19,8 +19,12 @@ export interface NotificationPage {
 
 export const getNotifications = async (page = 1, size = 20): Promise<Notification[]> => {
   const res = await apiClient.get(`/notifications?page=${page}&size=${size}`);
-  // some backend responses use { data: ... }, others return raw array
-  return res.data?.data ?? res.data;
+  // Support raw arrays, wrapped arrays, and paginated payloads.
+  const payload = res.data?.data ?? res.data;
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.items)) return payload.items;
+  if (Array.isArray(res.data?.items)) return res.data.items;
+  return [];
 };
 
 export const markNotificationAsRead = async (notificationId: string): Promise<void> => {
