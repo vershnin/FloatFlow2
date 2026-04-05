@@ -28,7 +28,6 @@ spring:
     properties:
       hibernate:
         format_sql: true
-        dialect: org.hibernate.dialect.PostgreSQLDialect
         jdbc:
           batch_size: 30
         order_inserts: true
@@ -36,8 +35,6 @@ spring:
     open-in-view: false
 
 jwt:
-  # Base64-encoded secret — required by JJWT 0.12.6
-  # Decodes to: floatflowsupersecretjwtkeyforHS256algorithmatleast32byteslong1234
   secret: ZmxvYXRmbG93c3VwZXJzZWNyZXRqd3RrZXlmb3JIUzI1NmFsZ29yaXRobWF0bGVhc3QzMmJ5dGVzbG9uZzEyMzQ=
   expiration: 86400000
 
