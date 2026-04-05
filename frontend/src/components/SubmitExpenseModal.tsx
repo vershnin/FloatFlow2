@@ -5,11 +5,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { submitExpense } from "@/api/expenseService";
+import { submitExpense, uploadReceipt } from "@/api/expenseService";
 import { getFloats, type FloatResponse } from "@/api/floatService";
 import { getPolicies, type PolicyResponse } from "@/api/policyService";
-import { AlertTriangle, Upload } from "lucide-react";
+import { AlertTriangle, Upload, X, FileText } from "lucide-react";
 import { toast } from "sonner";
+import axios from "axios";
+import { sanitizeText, SecureStorage } from "@/lib/security";
 
 const EXPENSE_CATEGORIES = [
   "Office Supplies", "Transport", "Meals & Entertainment", "Repairs & Maintenance",
@@ -26,7 +28,10 @@ export function SubmitExpenseModal({ open, onClose }: SubmitExpenseModalProps) {
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
   const [floatId, setFloatId] = useState("");
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [violations, setViolations] = useState<string[]>([]);
   const [floats, setFloats] = useState<FloatResponse[]>([]);
   const [policies, setPolicies] = useState<PolicyResponse[]>([]);
@@ -64,27 +69,84 @@ export function SubmitExpenseModal({ open, onClose }: SubmitExpenseModalProps) {
     else setViolations([]);
   };
 
+  const handleFileSelect = (file: File | null) => {
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) { // 5MB
+        toast.error("File size must be less than 5MB");
+        return;
+      }
+      setReceiptFile(file);
+      
+      // Create preview for images
+      if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          setReceiptPreview(e.target?.result as string);
+        };
+        reader.readAsDataURL(file);
+      } else {
+        setReceiptPreview(null);
+      }
+    } else {
+      setReceiptFile(null);
+      setReceiptPreview(null);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (violations.length > 0) {
-      toast.error("Cannot submit — policy violations detected");
-      return;
-    }
     if (!amount || !category || !description || !floatId) {
       toast.error("Please fill all required fields");
       return;
     }
     setIsSubmitting(true);
     try {
-      await submitExpense({
+      const expense = await submitExpense({
         amount: Number(amount),
-        category,
-        description,
+        category: sanitizeText(category),
+        description: sanitizeText(description),
         floatId: Number(floatId),
       });
-      toast.success("Expense submitted successfully");
-      setAmount(""); setCategory(""); setDescription(""); setFloatId(""); setViolations([]);
+
+      // Upload receipt if provided
+      if (receiptFile && expense.id) {
+        try {
+          setUploadProgress(0);
+          const formData = new FormData();
+          formData.append('receipt', receiptFile);
+          
+          const token = SecureStorage.getItem("ff_token");
+          await axios.put(`/api/expenses/${expense.id}/receipt`, formData, {
+            headers: {
+              'Content-Type': 'multipart/form-data',
+              ...(token && { Authorization: `Bearer ${token}` }),
+            },
+            onUploadProgress: (progressEvent) => {
+              const percent = Math.round((progressEvent.loaded * 100) / (progressEvent.total || 1));
+              setUploadProgress(percent);
+            },
+          });
+          setUploadProgress(100);
+          toast.success("Expense and receipt uploaded successfully");
+        } catch (uploadError) {
+          toast.warning("Expense submitted but receipt upload failed");
+        } finally {
+          setUploadProgress(0);
+        }
+      } else {
+        toast.success("Expense submitted successfully");
+      }
+
+      setAmount(""); setCategory(""); setDescription(""); setFloatId(""); setReceiptFile(null); setReceiptPreview(null); setUploadProgress(0); setViolations([]);
       onClose();
+    } catch (error: any) {
+      if (error.response?.data?.policyViolations) {
+        const serverViolations = error.response.data.policyViolations.map((v: any) => v.message);
+        setViolations(serverViolations);
+        toast.error("Expense submission blocked by policy");
+      } else {
+        toast.error(error.response?.data?.message || "Failed to submit expense");
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -145,19 +207,70 @@ export function SubmitExpenseModal({ open, onClose }: SubmitExpenseModalProps) {
 
           <div className="space-y-2">
             <Label>Receipt (optional)</Label>
-            <div className="flex items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/25 p-6 hover:border-muted-foreground/50 transition-colors cursor-pointer">
-              <div className="text-center">
-                <Upload className="h-8 w-8 mx-auto text-muted-foreground/50 mb-2" />
-                <p className="text-sm text-muted-foreground">Click to upload or drag & drop</p>
-                <p className="text-xs text-muted-foreground/70">PNG, JPG, PDF up to 5MB</p>
+            {receiptFile ? (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                  <div className="flex items-center gap-2">
+                    {receiptPreview ? (
+                      <img src={receiptPreview} alt="Receipt preview" className="h-10 w-10 object-cover rounded" />
+                    ) : (
+                      <FileText className="h-5 w-5 text-muted-foreground" />
+                    )}
+                    <div>
+                      <p className="text-sm font-medium">{receiptFile.name}</p>
+                      <p className="text-xs text-muted-foreground">{(receiptFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleFileSelect(null)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+                {uploadProgress > 0 && uploadProgress < 100 && (
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>Uploading...</span>
+                      <span>{uploadProgress}%</span>
+                    </div>
+                    <div className="w-full bg-muted rounded-full h-2">
+                      <div 
+                        className="bg-primary h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${uploadProgress}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
+            ) : (
+              <div className="flex items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/25 p-6 hover:border-muted-foreground/50 transition-colors">
+                <input
+                  type="file"
+                  accept="image/*,.pdf"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    handleFileSelect(file || null);
+                  }}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                />
+                <div className="text-center">
+                  <Upload className="h-8 w-8 mx-auto text-muted-foreground/50 mb-2" />
+                  <p className="text-sm text-muted-foreground">
+                    Click to upload or drag & drop
+                  </p>
+                  <p className="text-xs text-muted-foreground/70">PNG, JPG, PDF up to 5MB</p>
+                </div>
+              </div>
+            )}
           </div>
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-            <Button type="submit" disabled={isSubmitting || violations.length > 0}>
-              {isSubmitting ? "Submitting..." : "Submit Expense"}
+            <Button type="submit" disabled={isSubmitting || violations.length > 0 || uploadProgress > 0}>
+              {isSubmitting ? "Submitting..." : uploadProgress > 0 ? `Uploading... ${uploadProgress}%` : "Submit Expense"}
             </Button>
           </DialogFooter>
         </form>

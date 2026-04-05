@@ -62,7 +62,7 @@ export function AppHeader() {
             <DropdownMenuItem>Account Settings</DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout} className="text-destructive">
-              <LogOut className="h-4 w-4 mr-2" /> Sign Out
+              <LogOut className="h-4 w-4" /> Sign Out
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
