@@ -30,84 +30,134 @@ public class ExpenseService {
     private final NotificationService notificationService;
     private final AuditService auditService;
 
-    /**
-     * Handles expense submission, policy validation, and initial notification.
-     */
     @Transactional
-    public ExpenseResponse submit(SubmitExpenseRequest request, User submittedBy) {
+    public ExpenseResponse create(SubmitExpenseRequest request, User submittedBy) {
         com.floatflow.entity.Float floatAllocation = floatService.findActiveFloat(request.getFloatId());
 
-        // Ensure the user is submitting to their own branch's float
         if (!floatAllocation.getBranch().getId().equals(submittedBy.getBranch().getId())) {
             throw new BadRequestException("You can only submit expenses against your own branch's float.");
         }
 
-    // Run through the policy engine before saving anything
-        policyEngine.validate(
-            floatAllocation,
-            request.getAmount(),
-            request.getCategory(),
-            submittedBy.getBranch().getId(),
-            submittedBy.getId()
-        );
+        ExpenseStatus status = ExpenseStatus.PENDING;
+        if (request.getStatus() != null) {
+            try {
+                status = ExpenseStatus.valueOf(request.getStatus().toUpperCase());
+            } catch (IllegalArgumentException e) {
+                throw new BadRequestException("Invalid status: " + request.getStatus());
+            }
+        }
+
+        if (status != ExpenseStatus.DRAFT && status != ExpenseStatus.PENDING) {
+            throw new BadRequestException("Initial expense status must be DRAFT or PENDING.");
+        }
+
+        if (status == ExpenseStatus.PENDING) {
+            validatePolicy(floatAllocation, request, submittedBy);
+        }
 
         Expense expense = Expense.builder()
-            .floatAllocation(floatAllocation)
-            .submittedBy(submittedBy)
-            .branch(submittedBy.getBranch())
-            .amount(request.getAmount())
-            .category(request.getCategory())
-            .description(request.getDescription())
-            .receiptUrl(request.getReceiptUrl())
-            .build();
+                .floatAllocation(floatAllocation)
+                .submittedBy(submittedBy)
+                .branch(submittedBy.getBranch())
+                .amount(request.getAmount())
+                .category(request.getCategory())
+                .description(request.getDescription())
+                .receiptUrl(request.getReceiptUrl())
+                .status(status)
+                .build();
 
         expense = expenseRepository.save(expense);
 
-        auditService.log(submittedBy.getId(), AuditService.EXPENSE_SUBMITTED, "Expense",
-            expense.getId(), "Amount: " + request.getAmount() + ", Category: " + request.getCategory());
+        if (status == ExpenseStatus.PENDING) {
+            afterSubmissionActions(expense, submittedBy);
+        }
 
-        // Notify the branch manager
-        notificationService.notifyBranchManagers(
-            submittedBy.getBranch().getId(),
-            "New expense submitted by " + submittedBy.getName() + " — KES " + request.getAmount()
-        );
-
-        log.info("Expense {} submitted by {} for amount {}", expense.getId(), submittedBy.getEmail(), request.getAmount());
+        log.info("Expense {} created as {} by {} for amount {}",
+                expense.getId(), status, submittedBy.getEmail(), request.getAmount());
         return toResponse(expense);
     }
 
-    /**
-     * Approves an expense and deducts the amount from the branch float.
-     */
+    private void validatePolicy(com.floatflow.entity.Float floatAllocation,
+                                SubmitExpenseRequest request, User submittedBy) {
+        policyEngine.validate(
+                floatAllocation,
+                request.getAmount(),
+                request.getCategory(),
+                submittedBy.getBranch().getId(),
+                submittedBy.getId()
+        );
+    }
+
+    private void afterSubmissionActions(Expense expense, User submittedBy) {
+        auditService.log(submittedBy.getId(), AuditService.EXPENSE_SUBMITTED, "Expense",
+                expense.getId(),
+                "Amount: " + expense.getAmount() + ", Category: " + expense.getCategory());
+
+        notificationService.notifyBranchManagers(
+                submittedBy.getBranch().getId(),
+                "expense_submitted",
+                "New Expense Submitted",
+                "New expense submitted by " + submittedBy.getName() + " — KES " + expense.getAmount(),
+                "/approvals"
+        );
+    }
+
+    @Transactional
+    public ExpenseResponse submit(Long id, User submittedBy) {
+        Expense expense = expenseRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Expense not found: " + id));
+
+        if (expense.getStatus() != ExpenseStatus.DRAFT) {
+            throw new BadRequestException(
+                    "Only DRAFT expenses can be submitted. Current status: " + expense.getStatus());
+        }
+
+        if (!expense.getSubmittedBy().getId().equals(submittedBy.getId())) {
+            throw new BadRequestException("You can only submit your own draft expenses.");
+        }
+
+        SubmitExpenseRequest request = new SubmitExpenseRequest();
+        request.setAmount(expense.getAmount());
+        request.setCategory(expense.getCategory());
+        request.setFloatId(expense.getFloatAllocation().getId());
+
+        validatePolicy(expense.getFloatAllocation(), request, submittedBy);
+
+        expense.setStatus(ExpenseStatus.PENDING);
+        expense = expenseRepository.save(expense);
+
+        afterSubmissionActions(expense, submittedBy);
+
+        log.info("Expense {} submitted by {}", expense.getId(), submittedBy.getEmail());
+        return toResponse(expense);
+    }
+
     @Transactional
     public ExpenseResponse approve(Long expenseId, ApprovalRequest request, User approver) {
         Expense expense = findPendingExpense(expenseId);
 
-        // Record the approval decision
         saveApproval(expense, approver, "APPROVED", request.getComment());
 
-        // Update expense status
         expense.setStatus(ExpenseStatus.APPROVED);
         expenseRepository.save(expense);
 
-        // Deduct from float balance
         floatService.deductFromFloat(expense.getFloatAllocation(), expense.getAmount(), expenseId);
 
         auditService.log(approver.getId(), AuditService.EXPENSE_APPROVED, "Expense", expenseId,
-            "Approved by: " + approver.getName());
+                "Approved by: " + approver.getName());
 
-        // Notify the submitter
+        // Uses 5-arg overload: notifyUser(userId, type, title, message, link)
         notificationService.notifyUser(
-            expense.getSubmittedBy().getId(),
-            "Your expense of KES " + expense.getAmount() + " has been APPROVED by " + approver.getName()
+                expense.getSubmittedBy().getId(),
+                "expense_approved",
+                "Expense Approved",
+                "Your expense of KES " + expense.getAmount() + " has been approved by " + approver.getName(),
+                "/expenses"
         );
 
         return toResponse(expense);
     }
 
-    /**
-     * Reject an expense. Float balance is NOT deducted.
-     */
     @Transactional
     public ExpenseResponse reject(Long expenseId, ApprovalRequest request, User approver) {
         Expense expense = findPendingExpense(expenseId);
@@ -118,11 +168,15 @@ public class ExpenseService {
         expenseRepository.save(expense);
 
         auditService.log(approver.getId(), AuditService.EXPENSE_REJECTED, "Expense", expenseId,
-            "Rejected by: " + approver.getName() + ". Reason: " + request.getComment());
+                "Rejected by: " + approver.getName() + ". Reason: " + request.getComment());
 
+        // Uses 5-arg overload: notifyUser(userId, type, title, message, link)
         notificationService.notifyUser(
-            expense.getSubmittedBy().getId(),
-            "Your expense of KES " + expense.getAmount() + " was REJECTED. Reason: " + request.getComment()
+                expense.getSubmittedBy().getId(),
+                "expense_rejected",
+                "Expense Rejected",
+                "Your expense of KES " + expense.getAmount() + " was rejected. Reason: " + request.getComment(),
+                "/expenses"
         );
 
         return toResponse(expense);
@@ -130,28 +184,48 @@ public class ExpenseService {
 
     public List<ExpenseResponse> getAllExpenses() {
         return expenseRepository.findAll().stream()
-            .map(this::toResponse)
-            .collect(Collectors.toList());
+                .map(this::toResponse)
+                .collect(Collectors.toList());
     }
 
     public List<ExpenseResponse> getMyExpenses(User user) {
         return expenseRepository.findBySubmittedByIdOrderByCreatedAtDesc(user.getId()).stream()
-            .map(this::toResponse)
-            .collect(Collectors.toList());
+                .map(this::toResponse)
+                .collect(Collectors.toList());
     }
 
     public List<ExpenseResponse> getPendingExpenses() {
         return expenseRepository.findByStatus(ExpenseStatus.PENDING).stream()
-            .map(this::toResponse)
-            .collect(Collectors.toList());
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * FIX G: Persists the uploaded receipt URL on an expense.
+     * Called by ExpenseController.uploadReceipt() after saving the file to disk.
+     * Only the expense owner can attach a receipt.
+     */
+    @Transactional
+    public void updateReceiptUrl(Long expenseId, String receiptUrl, User currentUser) {
+        Expense expense = expenseRepository.findById(expenseId)
+                .orElseThrow(() -> new ResourceNotFoundException("Expense not found: " + expenseId));
+
+        if (!expense.getSubmittedBy().getId().equals(currentUser.getId())) {
+            throw new BadRequestException("You can only upload receipts for your own expenses.");
+        }
+
+        expense.setReceiptUrl(receiptUrl);
+        expenseRepository.save(expense);
+        log.info("Receipt URL set for expense {}: {}", expenseId, receiptUrl);
     }
 
     private Expense findPendingExpense(Long expenseId) {
         Expense expense = expenseRepository.findById(expenseId)
-            .orElseThrow(() -> new ResourceNotFoundException("Expense not found: " + expenseId));
+                .orElseThrow(() -> new ResourceNotFoundException("Expense not found: " + expenseId));
 
         if (expense.getStatus() != ExpenseStatus.PENDING) {
-            throw new BadRequestException("Expense is not in PENDING status. Current status: " + expense.getStatus());
+            throw new BadRequestException(
+                    "Expense is not in PENDING status. Current status: " + expense.getStatus());
         }
 
         return expense;
@@ -159,28 +233,28 @@ public class ExpenseService {
 
     private void saveApproval(Expense expense, User approver, String decision, String comment) {
         Approval approval = Approval.builder()
-            .expense(expense)
-            .approvedBy(approver)
-            .decision(decision)
-            .comment(comment)
-            .build();
+                .expense(expense)
+                .approvedBy(approver)
+                .decision(decision)
+                .comment(comment)
+                .build();
         approvalRepository.save(approval);
     }
 
     private ExpenseResponse toResponse(Expense e) {
         return ExpenseResponse.builder()
-            .id(e.getId())
-            .floatId(e.getFloatAllocation().getId())
-            .submittedByName(e.getSubmittedBy().getName())
-            .submittedByEmail(e.getSubmittedBy().getEmail())
-            .branchId(e.getBranch().getId())
-            .branchName(e.getBranch().getName())
-            .amount(e.getAmount())
-            .category(e.getCategory())
-            .description(e.getDescription())
-            .receiptUrl(e.getReceiptUrl())
-            .status(e.getStatus())
-            .createdAt(e.getCreatedAt())
-            .build();
+                .id(e.getId())
+                .floatId(e.getFloatAllocation().getId())
+                .submittedByName(e.getSubmittedBy().getName())
+                .submittedByEmail(e.getSubmittedBy().getEmail())
+                .branchId(e.getBranch().getId())
+                .branchName(e.getBranch().getName())
+                .amount(e.getAmount())
+                .category(e.getCategory())
+                .description(e.getDescription())
+                .receiptUrl(e.getReceiptUrl())
+                .status(e.getStatus())
+                .createdAt(e.getCreatedAt())
+                .build();
     }
 }
