@@ -22,6 +22,9 @@ public class SubmitExpenseRequest {
 
     private String description;
 
+    // Optional status, default to PENDING if not provided during creation
+    private String status;
+
     // URL of uploaded receipt (frontend uploads file first, sends back URL)
     private String receiptUrl;
 }
