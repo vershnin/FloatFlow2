@@ -86,22 +86,21 @@ export default function ApprovalsPage() {
       {/* Status filter tabs */}
       <div className="flex flex-wrap gap-2 mb-4">
         {(["PENDING", "APPROVED", "REJECTED", "all"] as const).map((s) => (
-          <button
+          <Button
             key={s}
             onClick={() => setStatusFilter(s)}
-            className={cn(
-              "rounded-lg px-3 py-1.5 text-xs font-medium capitalize transition-colors",
-              statusFilter === s
-                ? "bg-primary text-primary-foreground"
-                : "bg-secondary text-secondary-foreground hover:bg-muted"
-            )}
+            variant={statusFilter === s ? "default" : "secondary"}
+            size="sm"
+            className="capitalize"
+            aria-label={`Filter by ${s.toLowerCase()} expenses`}
+            aria-pressed={statusFilter === s}
           >
             {s.toLowerCase()} (
             {s === "all"
               ? expenses.length
               : expenses.filter((e) => e.status === s).length}
             )
-          </button>
+          </Button>
         ))}
       </div>
 
@@ -158,7 +157,7 @@ export default function ApprovalsPage() {
                     variant="outline"
                     onClick={() => setDetailModal(exp)}
                   >
-                    <FileText className="h-3 w-3 mr-1" /> Review
+                    <FileText className="h-3 w-3" /> Review
                   </Button>
                 )}
               </div>
@@ -245,13 +244,13 @@ export default function ApprovalsPage() {
                   disabled={actionLoading}
                   onClick={() => handleAction(detailModal.id, "REJECTED")}
                 >
-                  <XCircle className="h-4 w-4 mr-1" /> Reject
+                  <XCircle className="h-4 w-4" /> Reject
                 </Button>
                 <Button
                   disabled={actionLoading}
                   onClick={() => handleAction(detailModal.id, "APPROVED")}
                 >
-                  <CheckCircle2 className="h-4 w-4 mr-1" /> Approve
+                  <CheckCircle2 className="h-4 w-4" /> Approve
                 </Button>
               </DialogFooter>
             </div>

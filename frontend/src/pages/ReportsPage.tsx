@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Legend } from "recharts";
-import { reportData } from "@/mockData/enterprise";
+import { getSummaryReport, ReportSummary } from "@/api/reportService";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FileDown, FileSpreadsheet } from "lucide-react";
+import { FileDown, FileSpreadsheet, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 
@@ -12,10 +12,51 @@ const COLORS = ["hsl(224,76%,33%)", "hsl(160,84%,39%)", "hsl(38,92%,50%)", "hsl(
 
 export default function ReportsPage() {
   const [period, setPeriod] = useState("6m");
+  const [reportData, setReportData] = useState<ReportSummary | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchReportData = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const data = await getSummaryReport(period);
+        setReportData(data);
+      } catch (err: any) {
+        setError(err.response?.data?.message || "Failed to load report data");
+        toast.error("Failed to load report data");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchReportData();
+  }, [period]);
 
   const handleExport = (format: string) => {
     toast.success(`Exporting ${format.toUpperCase()} report...`, { description: "Your download will begin shortly" });
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin" />
+        <span className="ml-2">Loading reports...</span>
+      </div>
+    );
+  }
+
+  if (error || !reportData) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <p className="text-destructive mb-4">{error || "Failed to load report data"}</p>
+          <Button onClick={() => window.location.reload()}>Retry</Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -30,20 +71,20 @@ export default function ReportsPage() {
           </SelectContent>
         </Select>
         <Button variant="outline" onClick={() => handleExport("pdf")}>
-          <FileDown className="h-4 w-4 mr-1" /> PDF
+          <FileDown className="h-4 w-4" /> PDF
         </Button>
         <Button variant="outline" onClick={() => handleExport("excel")}>
-          <FileSpreadsheet className="h-4 w-4 mr-1" /> Excel
+          <FileSpreadsheet className="h-4 w-4" /> Excel
         </Button>
       </PageHeader>
 
       {/* KPI row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {[
-          { label: "Total Expenses", value: "KES 1,150,000" },
-          { label: "Avg per Branch", value: "KES 191,667" },
-          { label: "Approval Rate", value: "84.3%" },
-          { label: "Avg Processing Time", value: "1.4 days" },
+          { label: "Total Expenses", value: `KES ${reportData.totalExpenses.toLocaleString()}` },
+          { label: "Total Float Allocated", value: `KES ${reportData.totalFloatAllocated.toLocaleString()}` },
+          { label: "Approval Rate", value: `${(reportData.approvalRate * 100).toFixed(1)}%` },
+          { label: "Avg Processing Time", value: `${reportData.averageProcessingTime.toFixed(1)} days` },
         ].map((s, i) => (
           <motion.div key={s.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} className="glass-card p-5">
             <p className="text-sm text-muted-foreground">{s.label}</p>
@@ -57,7 +98,7 @@ export default function ReportsPage() {
         <div className="glass-card p-5 lg:col-span-2">
           <h3 className="text-sm font-semibold mb-4">Expense Summary Trend</h3>
           <ResponsiveContainer width="100%" height={280}>
-            <LineChart data={reportData.expenseSummary}>
+            <LineChart data={reportData.monthlyExpenseTrend}>
               <XAxis dataKey="month" tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
               <Tooltip />
