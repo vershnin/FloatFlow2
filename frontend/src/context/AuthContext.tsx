@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useCallback } from "react";
 import apiClient from "@/api/apiClient";
+import { SecureStorage, sanitizeText, isValidEmail, isValidPassword } from "@/lib/security";
+import { setUser as setMonitoringUser, clearUser as clearMonitoringUser } from "@/lib/monitoring";
 
 export type UserRole =
   | "ADMIN"
@@ -14,6 +16,10 @@ export interface User {
   name: string;
   role: UserRole;
   branchId?: number;
+  branchName?: string;
+  isActive: boolean;
+  lastLoginAt?: string;
+  createdAt: string;
 }
 
 interface AuthContextType {
@@ -45,57 +51,102 @@ export const ROLE_HOME: Record<UserRole, string> = {
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(() => {
-    const stored = localStorage.getItem("ff_user");
+    const stored = SecureStorage.getItem("ff_user");
     return stored ? JSON.parse(stored) : null;
   });
   const [isLoading, setIsLoading] = useState(false);
 
   const login = useCallback(async (email: string, password: string) => {
+    // Input validation
+    if (!isValidEmail(email)) {
+      throw new Error("Invalid email format");
+    }
+    if (!password || password.length < 8) {
+      throw new Error("Password must be at least 8 characters");
+    }
+
     setIsLoading(true);
     try {
-      const response = await apiClient.post("/auth/login", { email, password });
-      const { token, name, role, userId, branchId } = response.data.data;
+      const response = await apiClient.post("/auth/login", {
+        email: sanitizeText(email),
+        password: sanitizeText(password)
+      });
+      const { token, name, role, userId, branchId, isActive = true, createdAt = new Date().toISOString() } = response.data.data;
       const user: User = {
         id: String(userId),
         email,
         name,
         role,
         branchId,
+        isActive,
+        createdAt,
       };
-      localStorage.setItem("ff_token", token);
-      localStorage.setItem("ff_user", JSON.stringify(user));
+      SecureStorage.setItem("ff_token", token);
+      SecureStorage.setItem("ff_user", JSON.stringify(user));
       setUser(user);
+      // Set user context for monitoring
+      setMonitoringUser({
+        id: user.id,
+        email: user.email,
+        role: user.role,
+      });
     } finally {
       setIsLoading(false);
     }
   }, []);
 
   const register = useCallback(async (name: string, email: string, password: string, role: UserRole, branchId?: number) => {
+    // Input validation
+    if (!name || name.trim().length < 2) {
+      throw new Error("Name must be at least 2 characters");
+    }
+    if (!isValidEmail(email)) {
+      throw new Error("Invalid email format");
+    }
+    if (!isValidPassword(password)) {
+      throw new Error("Password must be at least 8 characters with uppercase, lowercase, and number");
+    }
+
     setIsLoading(true);
     try {
-      const payload: Record<string, unknown> = { name, email, password, role };
+      const payload: Record<string, unknown> = {
+        name: sanitizeText(name),
+        email: sanitizeText(email),
+        password: sanitizeText(password),
+        role
+      };
       if (branchId !== undefined) payload.branchId = branchId;
       const response = await apiClient.post("/auth/register", payload);
-      const { token, name: resName, role: resRole, userId, branchId: resBranchId } = response.data.data;
+      const { token, name: resName, role: resRole, userId, branchId: resBranchId, isActive = true, createdAt = new Date().toISOString() } = response.data.data;
       const user: User = {
         id: String(userId),
         email,
         name: resName,
         role: resRole,
         branchId: resBranchId,
+        isActive,
+        createdAt,
       };
-      localStorage.setItem("ff_token", token);
-      localStorage.setItem("ff_user", JSON.stringify(user));
+      SecureStorage.setItem("ff_token", token);
+      SecureStorage.setItem("ff_user", JSON.stringify(user));
       setUser(user);
+      // Set user context for monitoring
+      setMonitoringUser({
+        id: user.id,
+        email: user.email,
+        role: user.role,
+      });
     } finally {
       setIsLoading(false);
     }
   }, []);
 
   const logout = useCallback(() => {
-    localStorage.removeItem("ff_token");
-    localStorage.removeItem("ff_user");
+    SecureStorage.removeItem("ff_token");
+    SecureStorage.removeItem("ff_user");
     setUser(null);
+    // Clear user context for monitoring
+    clearMonitoringUser();
   }, []);
 
   return (
