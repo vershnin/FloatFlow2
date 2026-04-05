@@ -31,12 +31,14 @@ public class AdminUserService {
     private final PasswordEncoder passwordEncoder;
     private final AuditService auditService;
 
+    @Transactional(readOnly = true)
     public List<UserResponse> getAllUsers() {
         return userRepository.findAll().stream()
                 .map(UserResponse::fromUser)
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public UserResponse getUserById(Long id) {
         return userRepository.findById(id)
                 .map(UserResponse::fromUser)
@@ -180,7 +182,11 @@ public class AdminUserService {
     }
 
     private void logAudit(String action, Long targetUserId, String details) {
-        User currentUser = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        auditService.log(currentUser.getId(), action, "User", targetUserId, details);
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        Long currentUserId = null;
+        if (principal instanceof User user) {
+            currentUserId = user.getId();
+        }
+        auditService.log(currentUserId, action, "User", targetUserId, details);
     }
 }
