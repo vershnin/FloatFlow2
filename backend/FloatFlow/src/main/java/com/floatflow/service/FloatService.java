@@ -65,7 +65,12 @@ public class FloatService {
 
     @Transactional
     public FloatResponse topUp(Long floatId, TopUpFloatRequest request, User user) {
-        com.floatflow.entity.Float floatAllocation = findActiveFloat(floatId);
+        com.floatflow.entity.Float floatAllocation = floatRepository.findByIdForUpdate(floatId)
+            .orElseThrow(() -> new ResourceNotFoundException("Float not found with ID: " + floatId));
+
+        if (floatAllocation.getStatus() == FloatStatus.CLOSED) {
+            throw new BadRequestException("Cannot top up a closed float.");
+        }
 
         floatAllocation.setCurrentBalance(floatAllocation.getCurrentBalance().add(request.getAmount()));
 
@@ -79,6 +84,25 @@ public class FloatService {
 
         auditService.log(user.getId(), AuditService.FLOAT_TOPUP, "Float", floatId,
             "TopUp: " + request.getAmount());
+
+        return toResponse(floatAllocation);
+    }
+
+    @Transactional
+    public FloatResponse closeFloat(Long floatId, User user) {
+        com.floatflow.entity.Float floatAllocation = floatRepository.findByIdForUpdate(floatId)
+            .orElseThrow(() -> new ResourceNotFoundException("Float not found with ID: " + floatId));
+
+        if (floatAllocation.getStatus() == FloatStatus.CLOSED) {
+            throw new BadRequestException("Float is already closed.");
+        }
+
+        floatAllocation.setStatus(FloatStatus.CLOSED);
+        floatRepository.save(floatAllocation);
+
+        saveTransaction(floatAllocation, "CLOSED", BigDecimal.ZERO, "Float closed");
+
+        auditService.log(user.getId(), AuditService.FLOAT_CLOSED, "Float", floatId, "Float closed");
 
         return toResponse(floatAllocation);
     }
@@ -106,15 +130,27 @@ public class FloatService {
      */
     @Transactional
     public void deductFromFloat(com.floatflow.entity.Float floatAllocation, BigDecimal amount, Long expenseId) {
-        floatAllocation.setCurrentBalance(floatAllocation.getCurrentBalance().subtract(amount));
+        // Reload with pessimistic lock to ensure transaction safety
+        com.floatflow.entity.Float lockedFloat = floatRepository.findByIdForUpdate(floatAllocation.getId())
+            .orElseThrow(() -> new ResourceNotFoundException("Float not found: " + floatAllocation.getId()));
 
-        // Auto-exhaust if balance hits zero
-        if (floatAllocation.getCurrentBalance().compareTo(BigDecimal.ZERO) <= 0) {
-            floatAllocation.setStatus(FloatStatus.EXHAUSTED);
+        if (lockedFloat.getStatus() != FloatStatus.ACTIVE) {
+            throw new BadRequestException("Cannot deduct from a float that is not ACTIVE. Current status: " + lockedFloat.getStatus());
         }
 
-        floatRepository.save(floatAllocation);
-        saveTransaction(floatAllocation, "EXPENSE_DEDUCTION", amount, "Expense #" + expenseId);
+        if (lockedFloat.getCurrentBalance().compareTo(amount) < 0) {
+            throw new BadRequestException("Insufficient float balance. Available: " + lockedFloat.getCurrentBalance());
+        }
+
+        lockedFloat.setCurrentBalance(lockedFloat.getCurrentBalance().subtract(amount));
+
+        // Auto-exhaust if balance hits zero
+        if (lockedFloat.getCurrentBalance().compareTo(BigDecimal.ZERO) <= 0) {
+            lockedFloat.setStatus(FloatStatus.EXHAUSTED);
+        }
+
+        floatRepository.save(lockedFloat);
+        saveTransaction(lockedFloat, "EXPENSE_DEDUCTION", amount, "Expense #" + expenseId);
     }
 
     private void saveTransaction(com.floatflow.entity.Float floatAllocation, String type,
