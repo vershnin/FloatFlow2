@@ -1,16 +1,17 @@
 import { useState, useEffect, useMemo } from "react";
-import { Search, Plus, Filter } from "lucide-react";
-import { getExpenses, type ExpenseResponse } from "@/api/expenseService";
+import { Search, Plus } from "lucide-react";
+import { getExpenses, getMyExpenses, type ExpenseResponse } from "@/api/expenseService";
+import { useAuth } from "@/context/AuthContext";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SubmitExpenseModal } from "@/components/SubmitExpenseModal";
 import { motion } from "framer-motion";
 import { debounce } from "@/lib/performance";
 
 export default function ExpensesPage() {
+  const { user } = useAuth();
   const [expenses, setExpenses] = useState<ExpenseResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("all");
@@ -18,7 +19,6 @@ export default function ExpensesPage() {
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
 
-  // Debounce search query updates
   const debouncedSetSearch = useMemo(
     () => debounce((query: string) => setDebouncedSearchQuery(query), 300),
     []
@@ -28,10 +28,14 @@ export default function ExpensesPage() {
     debouncedSetSearch(searchQuery);
   }, [searchQuery, debouncedSetSearch]);
 
+  const canSeeAll = user?.role === "FINANCE_OFFICER" ||
+                    user?.role === "ADMIN" ||
+                    user?.role === "AUDITOR";
+
   const loadExpenses = async () => {
     setLoading(true);
     try {
-      const data = await getExpenses();
+      const data = canSeeAll ? await getExpenses() : await getMyExpenses();
       setExpenses(data);
     } finally {
       setLoading(false);
@@ -62,7 +66,10 @@ export default function ExpensesPage() {
 
   return (
     <div>
-      <PageHeader title="Expenses" description="Track and manage petty cash expenses">
+      <PageHeader
+        title="Expenses"
+        description={canSeeAll ? "All branch expenses" : "Your submitted expenses"}
+      >
         <Button onClick={() => setModalOpen(true)}>
           <Plus className="h-4 w-4" /> Submit Expense
         </Button>
@@ -121,10 +128,12 @@ export default function ExpensesPage() {
                     <td className="px-5 py-3 max-w-[200px] truncate">{exp.description}</td>
                     <td className="px-5 py-3 text-muted-foreground">{exp.category}</td>
                     <td className="px-5 py-3">{exp.branchName}</td>
-                    <td className="px-5 py-3 font-medium">KES {exp.amount.toLocaleString()}</td>
+                    <td className="px-5 py-3 font-medium">KES {Number(exp.amount).toLocaleString()}</td>
                     <td className="px-5 py-3 text-muted-foreground">{exp.submittedByName}</td>
                     <td className="px-5 py-3"><StatusBadge status={exp.status.toLowerCase()} /></td>
-                    <td className="px-5 py-3 text-muted-foreground">{new Date(exp.createdAt).toLocaleDateString()}</td>
+                    <td className="px-5 py-3 text-muted-foreground">
+                      {exp.createdAt ? new Date(exp.createdAt).toLocaleDateString() : "—"}
+                    </td>
                   </tr>
                 ))
               )}
