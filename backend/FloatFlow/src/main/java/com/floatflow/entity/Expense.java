@@ -57,7 +57,7 @@ public class Expense {
 
     @Enumerated(EnumType.STRING)
     @Builder.Default
-    private ExpenseStatus status = ExpenseStatus.PENDING;
+    private ExpenseStatus status = ExpenseStatus.DRAFT;
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
