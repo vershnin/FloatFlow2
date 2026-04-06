@@ -2,6 +2,7 @@ package com.floatflow.controller;
 
 import com.floatflow.dto.request.CreateBranchRequest;
 import com.floatflow.dto.response.ApiResponse;
+import com.floatflow.dto.response.BranchResponse;
 import com.floatflow.entity.Branch;
 import com.floatflow.service.BranchService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -38,18 +39,18 @@ public class BranchController {
 
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<Branch>> createBranch(@Valid @RequestBody CreateBranchRequest request) {
-        Branch branch = branchService.createBranch(request);
+    public ResponseEntity<ApiResponse<BranchResponse>> createBranch(@Valid @RequestBody CreateBranchRequest request) {
+        BranchResponse branch = branchService.createBranch(request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Branch created successfully", branch));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<Branch>> updateBranch(
+    public ResponseEntity<ApiResponse<BranchResponse>> updateBranch(
             @PathVariable Long id,
             @Valid @RequestBody CreateBranchRequest request) {
-        Branch branch = branchService.updateBranch(id, request);
+        BranchResponse branch = branchService.updateBranch(id, request);
         return ResponseEntity.ok(ApiResponse.success("Branch updated successfully", branch));
     }
 
