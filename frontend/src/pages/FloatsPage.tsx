@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Wallet, ArrowUpCircle, AlertTriangle, XCircle, Plus, RefreshCw } from "lucide-react";
 import { getFloats, type FloatResponse } from "@/api/floatService";
 import { PageHeader } from "@/components/PageHeader";
@@ -7,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { AllocateFloatModal } from "@/components/AllocateFloatModal";
-import { CreateBranchModal } from "@/components/CreateBranchModal";
 import { useAuth } from "@/context/AuthContext";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -31,13 +31,13 @@ function deriveStatus(float: FloatResponse): string {
 export default function FloatsPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === "ADMIN";
+  const navigate = useNavigate();
   const [floats, setFloats] = useState<FloatResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("all");
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<"allocate" | "topup">("allocate");
   const [topUpFloatId, setTopUpFloatId] = useState<number | undefined>();
-  const [createBranchModalOpen, setCreateBranchModalOpen] = useState(false);
 
   const loadFloats = async () => {
     setLoading(true);
@@ -81,8 +81,8 @@ export default function FloatsPage() {
       <PageHeader title="Float Management" description="Allocate and manage float across branches">
         <div className="flex items-center gap-2">
           {isAdmin && (
-            <Button variant="outline" onClick={() => setCreateBranchModalOpen(true)}>
-              <Plus className="h-4 w-4" /> Create Branch
+            <Button variant="outline" onClick={() => navigate("/admin/branches")}>
+              <Plus className="h-4 w-4" /> Manage Branches
             </Button>
           )}
           <Button onClick={() => { setModalMode("allocate"); setTopUpFloatId(undefined); setModalOpen(true); }}>
@@ -156,14 +156,6 @@ export default function FloatsPage() {
         onClose={() => { setModalOpen(false); loadFloats(); }}
         mode={modalMode}
         floatId={topUpFloatId}
-      />
-
-      <CreateBranchModal
-        open={createBranchModalOpen}
-        onClose={() => setCreateBranchModalOpen(false)}
-        onSuccess={() => {
-          setCreateBranchModalOpen(false);
-        }}
       />
     </div>
   );

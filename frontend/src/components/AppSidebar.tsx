@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, Wallet, Receipt, CheckSquare, ShieldCheck,
-  BarChart3, FileText, Plug, Settings, ChevronLeft, Users,
+  BarChart3, FileText, Plug, Settings, ChevronLeft, Users, Building2,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useAuth, ROLE_LABELS, type UserRole } from "@/context/AuthContext";
@@ -21,6 +21,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard, roles: ["ADMIN", "FINANCE_OFFICER", "BRANCH_MANAGER", "EMPLOYEE", "AUDITOR"] },
   { title: "Admin User Management", url: "/admin/users", icon: Users, roles: ["ADMIN"] },
+  { title: "Branch Management", url: "/admin/branches", icon: Building2, roles: ["ADMIN"] },
   { title: "Floats", url: "/floats", icon: Wallet, roles: ["ADMIN", "FINANCE_OFFICER", "BRANCH_MANAGER"] },
   { title: "Expenses", url: "/expenses", icon: Receipt, roles: ["ADMIN", "FINANCE_OFFICER", "BRANCH_MANAGER", "EMPLOYEE"] },
   { title: "Approvals", url: "/approvals", icon: CheckSquare, roles: ["ADMIN", "FINANCE_OFFICER", "BRANCH_MANAGER"] },

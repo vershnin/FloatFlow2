@@ -23,6 +23,7 @@ import ResetPasswordPage from "@/pages/ResetPasswordPage";
 import LandingPage from "@/pages/LandingPage";
 import NotFound from "./pages/NotFound";
 import AdminUserManagementPage from "@/pages/AdminUserManagementPage";
+import BranchManagementPage from "@/pages/BranchManagementPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -115,6 +116,14 @@ const App = () => (
                           element={
                             <ProtectedRoute allowedRoles={["ADMIN"]}>
                               <AdminUserManagementPage />
+                            </ProtectedRoute>
+                          }
+                        />
+                        <Route
+                          path="/admin/branches"
+                          element={
+                            <ProtectedRoute allowedRoles={["ADMIN"]}>
+                              <BranchManagementPage />
                             </ProtectedRoute>
                           }
                         />

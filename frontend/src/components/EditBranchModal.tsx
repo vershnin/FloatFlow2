@@ -1,16 +1,17 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import axios from "axios";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { createBranch } from "@/api/branchService";
+import { updateBranch, type Branch } from "@/api/branchService";
 import { type AdminUser } from "@/api/adminService";
 import { toast } from "sonner";
 
-interface CreateBranchModalProps {
+interface EditBranchModalProps {
   open: boolean;
+  branch: Branch | null;
   onClose: () => void;
   onSuccess: () => void;
   branchManagers: AdminUser[];
@@ -18,27 +19,31 @@ interface CreateBranchModalProps {
 
 const NO_MANAGER_VALUE = "__no_manager__";
 
-export function CreateBranchModal({ open, onClose, onSuccess, branchManagers }: CreateBranchModalProps) {
+export function EditBranchModal({ open, branch, onClose, onSuccess, branchManagers }: EditBranchModalProps) {
   const [name, setName] = useState("");
   const [location, setLocation] = useState("");
   const [managerId, setManagerId] = useState(NO_MANAGER_VALUE);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const resetForm = () => {
-    setName("");
-    setLocation("");
-    setManagerId(NO_MANAGER_VALUE);
-  };
+  useEffect(() => {
+    if (open && branch) {
+      setName(branch.name);
+      setLocation(branch.location);
+
+      const matchedManager = branch.managerEmail
+        ? branchManagers.find((manager) => manager.email === branch.managerEmail)
+        : undefined;
+      setManagerId(matchedManager ? matchedManager.id : NO_MANAGER_VALUE);
+    }
+  }, [open, branch, branchManagers]);
 
   const handleOpenChange = (nextOpen: boolean) => {
-    if (!nextOpen) {
-      resetForm();
-      onClose();
-    }
+    if (!nextOpen) onClose();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!branch) return;
 
     const trimmedName = name.trim();
     const trimmedLocation = location.trim();
@@ -50,17 +55,15 @@ export function CreateBranchModal({ open, onClose, onSuccess, branchManagers }: 
 
     setIsSubmitting(true);
     try {
-      await createBranch({
+      await updateBranch(branch.id, {
         name: trimmedName,
         location: trimmedLocation,
         managerId: managerId === NO_MANAGER_VALUE ? undefined : Number(managerId),
       });
-      toast.success("Branch created successfully");
-      resetForm();
+      toast.success("Branch updated successfully");
       onSuccess();
     } catch (error) {
-      // Axios errors (4xx/5xx from backend) are already toasted by the apiClient interceptor.
-      // Only surface our own thrown errors here (e.g. the frontend role guard).
+      // Axios 4xx/5xx toasted by apiClient interceptor; only handle local errors here.
       if (!axios.isAxiosError(error) && error instanceof Error && error.message) {
         toast.error(error.message);
       }
@@ -69,17 +72,19 @@ export function CreateBranchModal({ open, onClose, onSuccess, branchManagers }: 
     }
   };
 
+  if (!branch) return null;
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Create New Branch</DialogTitle>
+          <DialogTitle>Edit Branch</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="branch-name">Branch Name *</Label>
+            <Label htmlFor="edit-branch-name">Branch Name *</Label>
             <Input
-              id="branch-name"
+              id="edit-branch-name"
               placeholder="e.g. Nairobi CBD"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -89,9 +94,9 @@ export function CreateBranchModal({ open, onClose, onSuccess, branchManagers }: 
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="branch-location">Location *</Label>
+            <Label htmlFor="edit-branch-location">Location *</Label>
             <Input
-              id="branch-location"
+              id="edit-branch-location"
               placeholder="e.g. Nairobi"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
@@ -118,11 +123,11 @@ export function CreateBranchModal({ open, onClose, onSuccess, branchManagers }: 
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => handleOpenChange(false)} disabled={isSubmitting}>
+            <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
               Cancel
             </Button>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Creating..." : "Create Branch"}
+              {isSubmitting ? "Saving..." : "Save Changes"}
             </Button>
           </DialogFooter>
         </form>
