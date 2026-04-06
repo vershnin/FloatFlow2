@@ -6,14 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { createFloat, topUpFloat } from "@/api/floatService";
-import apiClient from "@/api/apiClient";
+import { getBranches, type Branch } from "@/api/branchService";
 import { toast } from "sonner";
-
-interface Branch {
-  id: number;
-  name: string;
-  location: string;
-}
 
 interface AllocateFloatModalProps {
   open: boolean;
@@ -31,8 +25,8 @@ export function AllocateFloatModal({ open, onClose, mode, floatId }: AllocateFlo
 
   useEffect(() => {
     if (open && mode === "allocate") {
-      apiClient.get("/branches")
-        .then((res) => setBranches(res.data.data ?? []))
+      getBranches()
+        .then(setBranches)
         .catch(() => toast.error("Could not load branches"));
     }
   }, [open, mode]);

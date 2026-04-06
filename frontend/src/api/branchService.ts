@@ -1,5 +1,6 @@
 import apiClient from "./apiClient";
 import { apiCache } from "../lib/cache";
+import { SecureStorage } from "../lib/security";
 
 export interface Branch {
   id: number;
@@ -24,6 +25,14 @@ export interface UpdateBranchRequest {
   isActive?: boolean;
 }
 
+function normalizeBranches(data: unknown): Branch[] {
+  if (Array.isArray(data)) return data as Branch[];
+  if (data && typeof data === "object" && Array.isArray((data as { content?: unknown }).content)) {
+    return (data as { content: Branch[] }).content;
+  }
+  return [];
+}
+
 export const getBranches = async (): Promise<Branch[]> => {
   const cacheKey = 'branches';
   const cached = apiCache.get<Branch[]>(cacheKey);
@@ -32,7 +41,7 @@ export const getBranches = async (): Promise<Branch[]> => {
   }
 
   const res = await apiClient.get("/branches");
-  const data = res.data.data;
+  const data = normalizeBranches(res.data.data);
   apiCache.set(cacheKey, data, 10 * 60 * 1000); // Cache for 10 minutes
   return data;
 };
@@ -51,10 +60,29 @@ export const getBranchById = async (id: number): Promise<Branch> => {
 };
 
 export const createBranch = async (data: CreateBranchRequest): Promise<Branch> => {
+  const storedUser = SecureStorage.getItem("ff_user");
+  let role: string | undefined;
+  if (storedUser) {
+    try {
+      role = JSON.parse(storedUser)?.role;
+    } catch {
+      role = undefined;
+    }
+  }
+
+  if (role !== "ADMIN") {
+    throw new Error("Only admins can create branches.");
+  }
+
   const res = await apiClient.post("/branches", data);
+  const created = res.data.data as Branch;
+
   // Invalidate branches cache when branches are modified
   apiCache.clearPattern('branch');
-  return res.data.data;
+  const existing = apiCache.get<Branch[]>('branches') ?? [];
+  const merged = [created, ...existing.filter((b) => b.id !== created.id)];
+  apiCache.set('branches', merged, 10 * 60 * 1000);
+  return created;
 };
 
 export const updateBranch = async (id: number, data: UpdateBranchRequest): Promise<Branch> => {

@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { createUser, type CreateUserRequest } from "@/api/adminService";
-import { getFloats, type FloatResponse } from "@/api/floatService";
+import { getBranches, type Branch } from "@/api/branchService";
 import { ROLE_LABELS, type UserRole } from "@/context/AuthContext";
 import { toast } from "sonner";
 
@@ -22,18 +22,13 @@ export function CreateUserModal({ open, onClose, onSuccess }: CreateUserModalPro
   const [role, setRole] = useState<UserRole>("EMPLOYEE");
   const [branchId, setBranchId] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [floats, setFloats] = useState<FloatResponse[]>([]);
+  const [branches, setBranches] = useState<Branch[]>([]);
 
   useEffect(() => {
     if (open) {
-      getFloats().then(setFloats).catch(() => {});
+      getBranches().then(setBranches).catch(() => {});
     }
   }, [open]);
-
-  // Get unique branches from floats
-  const branches = Array.from(
-    new Map(floats.map(f => [f.branchId, { id: f.branchId, name: f.branchName }])).values()
-  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

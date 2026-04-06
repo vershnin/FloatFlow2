@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { updateUser, activateUser, deactivateUser, type AdminUser, type UpdateUserRequest } from "@/api/adminService";
-import { getFloats, type FloatResponse } from "@/api/floatService";
+import { getBranches, type Branch } from "@/api/branchService";
 import { toast } from "sonner";
 
 interface EditUserModalProps {
@@ -16,13 +16,15 @@ interface EditUserModalProps {
   onSuccess: () => void;
 }
 
+const NO_BRANCH_VALUE = "__no_branch__";
+
 export function EditUserModal({ open, user, onClose, onSuccess }: EditUserModalProps) {
   const [name, setName]         = useState("");
   const [email, setEmail]       = useState("");
   const [branchId, setBranchId] = useState("");
   const [isActive, setIsActive] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [floats, setFloats]     = useState<FloatResponse[]>([]);
+  const [branches, setBranches] = useState<Branch[]>([]);
 
   useEffect(() => {
     if (open && user) {
@@ -32,13 +34,9 @@ export function EditUserModal({ open, user, onClose, onSuccess }: EditUserModalP
       setIsActive(user.isActive);
     }
     if (open) {
-      getFloats().then(setFloats).catch(() => {});
+      getBranches().then(setBranches).catch(() => {});
     }
   }, [open, user]);
-
-  const branches = Array.from(
-    new Map(floats.map(f => [f.branchId, { id: f.branchId, name: f.branchName }])).values()
-  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -106,12 +104,15 @@ export function EditUserModal({ open, user, onClose, onSuccess }: EditUserModalP
 
           <div className="space-y-2">
             <Label>Branch (optional)</Label>
-            <Select value={branchId} onValueChange={setBranchId}>
+            <Select
+              value={branchId || NO_BRANCH_VALUE}
+              onValueChange={(value) => setBranchId(value === NO_BRANCH_VALUE ? "" : value)}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select branch" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">No branch</SelectItem>
+                <SelectItem value={NO_BRANCH_VALUE}>No branch</SelectItem>
                 {branches.map((b) => (
                   <SelectItem key={b.id} value={String(b.id)}>
                     {b.name}
