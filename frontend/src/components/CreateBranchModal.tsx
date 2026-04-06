@@ -1,4 +1,5 @@
 import { useState } from "react";
+import axios from "axios";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,7 +51,9 @@ export function CreateBranchModal({ open, onClose, onSuccess }: CreateBranchModa
       resetForm();
       onSuccess();
     } catch (error) {
-      if (error instanceof Error && error.message) {
+      // Axios errors (4xx/5xx from backend) are already toasted by the apiClient interceptor.
+      // Only surface our own thrown errors here (e.g. the frontend role guard).
+      if (!axios.isAxiosError(error) && error instanceof Error && error.message) {
         toast.error(error.message);
       }
     } finally {
