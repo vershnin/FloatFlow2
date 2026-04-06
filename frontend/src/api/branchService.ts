@@ -94,21 +94,17 @@ export const updateBranch = async (id: number, data: UpdateBranchRequest): Promi
 };
 
 export const activateBranch = async (id: number): Promise<Branch> => {
-  const current = await getBranchById(id);
-  const res = await apiClient.put(`/branches/${id}`, {
-    name: current.name,
-    location: current.location,
-    isActive: true,
-  });
+  const res = await apiClient.patch(`/branches/${id}/activate`);
   apiCache.clear(`branch_${id}`);
-  apiCache.clear('branches');
+  apiCache.clearPattern('branches');
   return res.data.data;
 };
 
-export const deactivateBranch = async (id: number): Promise<void> => {
-  await apiClient.delete(`/branches/${id}`);
+export const deactivateBranch = async (id: number): Promise<Branch> => {
+  const res = await apiClient.patch(`/branches/${id}/deactivate`);
   apiCache.clear(`branch_${id}`);
-  apiCache.clear('branches');
+  apiCache.clearPattern('branches');
+  return res.data.data;
 };
 
 /** Call before a management page load to always get fresh data from the server. */
