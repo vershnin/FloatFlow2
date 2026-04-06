@@ -45,5 +45,20 @@ public class DataInitializer implements ApplicationRunner {
             log.info("Branches already exist — skipping seed. Count: {}",
                 branchRepository.count());
         }
+
+        logSecurityPolicySummary();
+    }
+
+    private void logSecurityPolicySummary() {
+        log.info("RBAC policy: POST /api/auth/login, /api/auth/register -> permitAll");
+        log.info("RBAC policy: GET /api/floats -> ADMIN, FINANCE_OFFICER, BRANCH_MANAGER");
+        log.info("RBAC policy: GET /api/expenses -> ADMIN, FINANCE_OFFICER");
+        log.info("RBAC policy: GET /api/expenses/my -> ADMIN, FINANCE_OFFICER, BRANCH_MANAGER, EMPLOYEE, AUDITOR");
+        log.info("RBAC policy: GET /api/expenses/pending -> ADMIN, FINANCE_OFFICER, BRANCH_MANAGER");
+        log.info("RBAC policy: /api/policies (read/write) -> ADMIN, FINANCE_OFFICER");
+        log.info("RBAC policy: GET /api/reports/** -> ADMIN, FINANCE_OFFICER, AUDITOR");
+        log.info("RBAC policy: GET /api/audit, /api/audit/** -> ADMIN, AUDITOR");
+        log.info("RBAC policy: /api/admin/** -> ADMIN");
+        log.info("RBAC policy: any other /api/** -> authenticated");
     }
 }

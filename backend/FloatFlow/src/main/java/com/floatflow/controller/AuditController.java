@@ -26,14 +26,14 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/audit")
 @RequiredArgsConstructor
-@Tag(name = "Audit", description = "Immutable audit trail — Auditors, Finance Officers and Admins only")
+@Tag(name = "Audit", description = "Immutable audit trail - Auditors and Admins only")
 @SecurityRequirement(name = "bearerAuth")
-@PreAuthorize("hasAnyRole('AUDITOR', 'ADMIN', 'FINANCE_OFFICER')")
 public class AuditController {
 
     private final AuditLogRepository auditLogRepository;
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('AUDITOR', 'ADMIN')")
     @Operation(summary = "Get paginated audit logs with optional filters")
     public ResponseEntity<ApiResponse<Page<AuditLog>>> getAuditLogs(
             @RequestParam(defaultValue = "0")  int page,
@@ -85,6 +85,7 @@ public class AuditController {
     }
 
     @GetMapping("/entity/{type}/{id}")
+    @PreAuthorize("hasAnyRole('AUDITOR', 'ADMIN')")
     @Operation(summary = "Get audit history for a specific entity (e.g. /audit/entity/Expense/42)")
     public ResponseEntity<ApiResponse<Page<AuditLog>>> getEntityAuditLogs(
             @PathVariable String type,

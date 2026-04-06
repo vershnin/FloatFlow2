@@ -4,6 +4,7 @@ import com.floatflow.repository.UserRepository;
 import com.floatflow.security.JwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -18,6 +19,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -41,22 +43,71 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(
         HttpSecurity http,
         JwtAuthenticationFilter jwtAuthFilter,
-        com.floatflow.security.CustomAuthenticationEntryPoint authEntryPoint
+        com.floatflow.security.CustomAuthenticationEntryPoint authEntryPoint,
+        AccessDeniedHandler accessDeniedHandler
     ) throws Exception {
         http
             .csrf(AbstractHttpConfigurer::disable)
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-            .exceptionHandling(ex -> ex.authenticationEntryPoint(authEntryPoint))
+            .exceptionHandling(ex -> ex
+                .authenticationEntryPoint(authEntryPoint)
+                .accessDeniedHandler(accessDeniedHandler)
+            )
             .authorizeHttpRequests(auth -> auth
+                .requestMatchers(HttpMethod.POST,
+                    "/api/auth/login",
+                    "/api/auth/register"
+                ).permitAll()
                 .requestMatchers(
-                    "/api/auth/**",
-                    "/api/branches",
                     "/swagger-ui/**",
                     "/swagger-ui.html",
                     "/api-docs/**",
                     "/v3/api-docs/**"
                 ).permitAll()
-                .anyRequest().authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/floats")
+                    .hasAnyRole("ADMIN", "FINANCE_OFFICER", "BRANCH_MANAGER")
+                .requestMatchers(HttpMethod.POST, "/api/floats")
+                    .hasAnyRole("ADMIN", "FINANCE_OFFICER")
+                .requestMatchers(HttpMethod.PUT, "/api/floats/*/topup")
+                    .hasAnyRole("ADMIN", "FINANCE_OFFICER", "BRANCH_MANAGER")
+                .requestMatchers(HttpMethod.PUT, "/api/floats/*/close")
+                    .hasAnyRole("ADMIN", "FINANCE_OFFICER")
+                .requestMatchers(HttpMethod.GET, "/api/floats/*/transactions")
+                    .hasAnyRole("ADMIN", "FINANCE_OFFICER", "BRANCH_MANAGER")
+
+                .requestMatchers(HttpMethod.GET, "/api/expenses")
+                    .hasAnyRole("ADMIN", "FINANCE_OFFICER")
+                .requestMatchers(HttpMethod.GET, "/api/expenses/my")
+                    .hasAnyRole("ADMIN", "FINANCE_OFFICER", "BRANCH_MANAGER", "EMPLOYEE", "AUDITOR")
+                .requestMatchers(HttpMethod.GET, "/api/expenses/pending")
+                    .hasAnyRole("ADMIN", "FINANCE_OFFICER", "BRANCH_MANAGER")
+                .requestMatchers(HttpMethod.POST, "/api/expenses")
+                    .hasAnyRole("ADMIN", "FINANCE_OFFICER", "BRANCH_MANAGER", "EMPLOYEE")
+                .requestMatchers(HttpMethod.PUT, "/api/expenses/*/approve", "/api/expenses/*/reject")
+                    .hasAnyRole("ADMIN", "FINANCE_OFFICER", "BRANCH_MANAGER")
+
+                .requestMatchers(HttpMethod.GET, "/api/policies")
+                    .hasAnyRole("ADMIN", "FINANCE_OFFICER")
+                .requestMatchers(HttpMethod.POST, "/api/policies")
+                    .hasAnyRole("ADMIN", "FINANCE_OFFICER")
+                .requestMatchers(HttpMethod.PUT, "/api/policies/*")
+                    .hasAnyRole("ADMIN", "FINANCE_OFFICER")
+                .requestMatchers(HttpMethod.PATCH, "/api/policies/*")
+                    .hasAnyRole("ADMIN", "FINANCE_OFFICER")
+                .requestMatchers(HttpMethod.DELETE, "/api/policies/*")
+                    .hasAnyRole("ADMIN", "FINANCE_OFFICER")
+
+                .requestMatchers(HttpMethod.GET, "/api/reports/**")
+                    .hasAnyRole("ADMIN", "FINANCE_OFFICER", "AUDITOR")
+
+                .requestMatchers(HttpMethod.GET, "/api/audit", "/api/audit/**")
+                    .hasAnyRole("ADMIN", "AUDITOR")
+
+                .requestMatchers("/api/admin/**")
+                    .hasRole("ADMIN")
+
+                .requestMatchers("/api/**").authenticated()
+                .anyRequest().permitAll()
             )
             .sessionManagement(session ->
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
