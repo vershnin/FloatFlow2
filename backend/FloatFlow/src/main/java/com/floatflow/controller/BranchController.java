@@ -57,14 +57,14 @@ public class BranchController {
     @PatchMapping("/{id}/activate")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<BranchResponse>> activateBranch(@PathVariable Long id) {
-        BranchResponse branch = branchService.setBranchActive(id, true);
+        BranchResponse branch = branchService.activateBranch(id);
         return ResponseEntity.ok(ApiResponse.success("Branch activated successfully", branch));
     }
 
     @PatchMapping("/{id}/deactivate")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<BranchResponse>> deactivateBranch(@PathVariable Long id) {
-        BranchResponse branch = branchService.setBranchActive(id, false);
+        BranchResponse branch = branchService.deactivateBranch(id);
         return ResponseEntity.ok(ApiResponse.success("Branch deactivated successfully", branch));
     }
 

@@ -89,9 +89,19 @@ public class BranchService {
     }
 
     @Transactional
-    public BranchResponse setBranchActive(Long branchId, boolean active) {
+    public BranchResponse activateBranch(Long branchId) {
+        return setBranchActive(branchId, true);
+    }
+
+    @Transactional
+    public BranchResponse deactivateBranch(Long branchId) {
+        return setBranchActive(branchId, false);
+    }
+
+    private BranchResponse setBranchActive(Long branchId, boolean active) {
         Branch branch = getBranchById(branchId);
         branch.setActive(active);
+        log.info("{} branch with ID: {}", active ? "Activated" : "Deactivated", branchId);
         return BranchResponse.fromBranch(branchRepository.save(branch));
     }
 
@@ -114,7 +124,7 @@ public class BranchService {
             throw new ConflictException("Manager is already assigned to another branch");
         }
         if (manager.getBranch() != null
-            && (currentBranchId == null || !manager.getBranch().getId().equals(currentBranchId))) {
+            && !manager.getBranch().getId().equals(currentBranchId)) {
             throw new ConflictException("Manager already belongs to another branch");
         }
 
