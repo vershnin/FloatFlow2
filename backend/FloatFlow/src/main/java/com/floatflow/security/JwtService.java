@@ -10,6 +10,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
+import java.util.Locale;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -61,6 +62,20 @@ public class JwtService {
     public boolean isTokenValid(String token, UserDetails userDetails) {
         final String username = extractUsername(token);
         return username.equals(userDetails.getUsername()) && !isTokenExpired(token);
+    }
+
+    public String extractRoleAuthority(String token) {
+        Object roleClaim = extractAllClaims(token).get("role");
+        return normalizeRoleAuthority(roleClaim == null ? null : roleClaim.toString());
+    }
+
+    public String normalizeRoleAuthority(String roleClaim) {
+        if (roleClaim == null || roleClaim.isBlank()) {
+            return null;
+        }
+
+        String normalized = roleClaim.trim().toUpperCase(Locale.ROOT);
+        return normalized.startsWith("ROLE_") ? normalized : "ROLE_" + normalized;
     }
 
     private boolean isTokenExpired(String token) {

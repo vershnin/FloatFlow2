@@ -1,6 +1,7 @@
 package com.floatflow.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.floatflow.dto.response.ApiResponse;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -10,9 +11,6 @@ import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-
 @Component
 public class CustomAuthenticationEntryPoint implements AuthenticationEntryPoint {
 
@@ -24,13 +22,9 @@ public class CustomAuthenticationEntryPoint implements AuthenticationEntryPoint 
         
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-
-        final Map<String, Object> body = new HashMap<>();
-        body.put("success", false);
-        body.put("message", "Unauthorized access — please provide a valid token.");
-        body.put("error", authException.getMessage());
-        body.put("path", request.getServletPath());
-
-        objectMapper.writeValue(response.getOutputStream(), body);
+        objectMapper.writeValue(
+            response.getOutputStream(),
+            ApiResponse.error("Unauthorized access - please provide a valid token")
+        );
     }
 }
