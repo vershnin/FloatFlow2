@@ -22,12 +22,12 @@ import java.util.List;
 @RequiredArgsConstructor
 @Tag(name = "Policies", description = "Spending policy management (Finance Officers only)")
 @SecurityRequirement(name = "bearerAuth")
-@PreAuthorize("hasAnyRole('FINANCE_OFFICER', 'ADMIN')")
 public class PolicyController {
 
     private final PolicyService policyService;
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('FINANCE_OFFICER', 'ADMIN')")
     public ResponseEntity<ApiResponse<Policy>> create(
         @Valid @RequestBody CreatePolicyRequest request,
         @AuthenticationPrincipal User currentUser
@@ -38,11 +38,13 @@ public class PolicyController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('FINANCE_OFFICER', 'ADMIN')")
     public ResponseEntity<ApiResponse<List<Policy>>> getAll() {
         return ResponseEntity.ok(ApiResponse.success("Policies retrieved", policyService.getAllPolicies()));
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('FINANCE_OFFICER', 'ADMIN')")
     public ResponseEntity<ApiResponse<Policy>> update(
         @PathVariable Long id,
         @Valid @RequestBody CreatePolicyRequest request,
@@ -53,6 +55,7 @@ public class PolicyController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('FINANCE_OFFICER', 'ADMIN')")
     public ResponseEntity<ApiResponse<Void>> delete(
         @PathVariable Long id,
         @AuthenticationPrincipal User currentUser

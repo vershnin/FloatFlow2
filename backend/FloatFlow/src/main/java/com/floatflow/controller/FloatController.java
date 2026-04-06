@@ -47,14 +47,14 @@ public class FloatController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('FINANCE_OFFICER', 'ADMIN', 'AUDITOR', 'BRANCH_MANAGER')")
-    @Operation(summary = "Get all floats (Finance, Admin, Auditor, Branch Manager)")
+    @PreAuthorize("hasAnyRole('FINANCE_OFFICER', 'ADMIN', 'BRANCH_MANAGER')")
+    @Operation(summary = "Get all floats (Finance, Admin, Branch Manager)")
     public ResponseEntity<ApiResponse<List<FloatResponse>>> getAllFloats() {
         return ResponseEntity.ok(ApiResponse.success("Floats retrieved", floatService.getAllFloats()));
     }
 
     @PutMapping("/{id}/topup")
-    @PreAuthorize("hasAnyRole('FINANCE_OFFICER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('FINANCE_OFFICER', 'ADMIN', 'BRANCH_MANAGER')")
     @Operation(summary = "Top up a float balance")
     public ResponseEntity<ApiResponse<FloatResponse>> topUp(
             @PathVariable Long id,
@@ -77,7 +77,7 @@ public class FloatController {
     }
 
     @GetMapping("/{id}/transactions")
-    @PreAuthorize("hasAnyRole('FINANCE_OFFICER', 'ADMIN', 'AUDITOR', 'BRANCH_MANAGER')")
+    @PreAuthorize("hasAnyRole('FINANCE_OFFICER', 'ADMIN', 'BRANCH_MANAGER')")
     @Operation(summary = "Get transaction history for a float")
     public ResponseEntity<ApiResponse<List<FloatTransaction>>> getTransactions(@PathVariable Long id) {
         List<FloatTransaction> transactions =

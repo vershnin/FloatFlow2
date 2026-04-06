@@ -18,12 +18,12 @@ import java.util.List;
 @RequiredArgsConstructor
 @Tag(name = "Reports", description = "Financial summary reports")
 @SecurityRequirement(name = "bearerAuth")
-@PreAuthorize("hasAnyRole('FINANCE_OFFICER', 'ADMIN', 'AUDITOR')")
 public class ReportController {
 
     private final ReportingService reportingService;
 
     @GetMapping("/summary")
+    @PreAuthorize("hasAnyRole('FINANCE_OFFICER', 'ADMIN', 'AUDITOR')")
     @Operation(summary = "Get expense summary across all branches")
     public ResponseEntity<ApiResponse<List<BranchReportResponse>>> getSummary() {
         return ResponseEntity.ok(
@@ -32,6 +32,7 @@ public class ReportController {
     }
 
     @GetMapping("/branch/{id}")
+    @PreAuthorize("hasAnyRole('FINANCE_OFFICER', 'ADMIN', 'AUDITOR')")
     @Operation(summary = "Get detailed report for a specific branch")
     public ResponseEntity<ApiResponse<BranchReportResponse>> getBranchReport(@PathVariable Long id) {
         return ResponseEntity.ok(

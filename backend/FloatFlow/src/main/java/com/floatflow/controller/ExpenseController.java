@@ -37,7 +37,7 @@ public class ExpenseController {
     private final ExpenseService expenseService;
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('EMPLOYEE', 'BRANCH_MANAGER', 'FINANCE_OFFICER')")
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'BRANCH_MANAGER', 'FINANCE_OFFICER', 'ADMIN')")
     @Operation(summary = "Create a new expense (DRAFT or PENDING)")
     public ResponseEntity<ApiResponse<ExpenseResponse>> create(
             @Valid @RequestBody SubmitExpenseRequest request,
@@ -60,13 +60,14 @@ public class ExpenseController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('FINANCE_OFFICER', 'ADMIN', 'AUDITOR')")
-    @Operation(summary = "Get all expenses (Finance Officers, Admins, Auditors)")
+    @PreAuthorize("hasAnyRole('FINANCE_OFFICER', 'ADMIN')")
+    @Operation(summary = "Get all expenses (Finance Officers and Admins)")
     public ResponseEntity<ApiResponse<List<ExpenseResponse>>> getAll() {
         return ResponseEntity.ok(ApiResponse.success("Expenses retrieved", expenseService.getAllExpenses()));
     }
 
     @GetMapping("/my")
+    @PreAuthorize("hasAnyRole('ADMIN', 'FINANCE_OFFICER', 'BRANCH_MANAGER', 'EMPLOYEE', 'AUDITOR')")
     @Operation(summary = "Get current user's own expenses")
     public ResponseEntity<ApiResponse<List<ExpenseResponse>>> getMyExpenses(
             @AuthenticationPrincipal User currentUser
