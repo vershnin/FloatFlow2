@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { AllocateFloatModal } from "@/components/AllocateFloatModal";
+import { CreateBranchModal } from "@/components/CreateBranchModal";
+import { useAuth } from "@/context/AuthContext";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
@@ -27,12 +29,15 @@ function deriveStatus(float: FloatResponse): string {
 }
 
 export default function FloatsPage() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "ADMIN";
   const [floats, setFloats] = useState<FloatResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("all");
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<"allocate" | "topup">("allocate");
   const [topUpFloatId, setTopUpFloatId] = useState<number | undefined>();
+  const [createBranchModalOpen, setCreateBranchModalOpen] = useState(false);
 
   const loadFloats = async () => {
     setLoading(true);
@@ -74,9 +79,16 @@ export default function FloatsPage() {
   return (
     <div>
       <PageHeader title="Float Management" description="Allocate and manage float across branches">
-        <Button onClick={() => { setModalMode("allocate"); setTopUpFloatId(undefined); setModalOpen(true); }}>
-          <Plus className="h-4 w-4" /> Allocate Float
-        </Button>
+        <div className="flex items-center gap-2">
+          {isAdmin && (
+            <Button variant="outline" onClick={() => setCreateBranchModalOpen(true)}>
+              <Plus className="h-4 w-4" /> Create Branch
+            </Button>
+          )}
+          <Button onClick={() => { setModalMode("allocate"); setTopUpFloatId(undefined); setModalOpen(true); }}>
+            <Plus className="h-4 w-4" /> Allocate Float
+          </Button>
+        </div>
       </PageHeader>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
@@ -144,6 +156,14 @@ export default function FloatsPage() {
         onClose={() => { setModalOpen(false); loadFloats(); }}
         mode={modalMode}
         floatId={topUpFloatId}
+      />
+
+      <CreateBranchModal
+        open={createBranchModalOpen}
+        onClose={() => setCreateBranchModalOpen(false)}
+        onSuccess={() => {
+          setCreateBranchModalOpen(false);
+        }}
       />
     </div>
   );

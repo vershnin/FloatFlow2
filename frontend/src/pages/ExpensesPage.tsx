@@ -29,8 +29,7 @@ export default function ExpensesPage() {
   }, [searchQuery, debouncedSetSearch]);
 
   const canSeeAll = user?.role === "FINANCE_OFFICER" ||
-                    user?.role === "ADMIN" ||
-                    user?.role === "AUDITOR";
+                    user?.role === "ADMIN";
 
   const loadExpenses = async () => {
     setLoading(true);
