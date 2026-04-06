@@ -80,9 +80,11 @@ public class ExpenseController {
     @GetMapping("/pending")
     @PreAuthorize("hasAnyRole('BRANCH_MANAGER', 'FINANCE_OFFICER', 'ADMIN')")
     @Operation(summary = "Get all pending expenses awaiting approval")
-    public ResponseEntity<ApiResponse<List<ExpenseResponse>>> getPending() {
+    public ResponseEntity<ApiResponse<List<ExpenseResponse>>> getPending(
+            @AuthenticationPrincipal User currentUser
+    ) {
         return ResponseEntity.ok(
-                ApiResponse.success("Pending expenses retrieved", expenseService.getPendingExpenses())
+                ApiResponse.success("Pending expenses retrieved", expenseService.getPendingExpenses(currentUser))
         );
     }
 

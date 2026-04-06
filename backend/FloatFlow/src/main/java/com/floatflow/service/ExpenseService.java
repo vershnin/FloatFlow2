@@ -12,6 +12,7 @@ import com.floatflow.repository.ApprovalRepository;
 import com.floatflow.repository.ExpenseRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -134,7 +135,7 @@ public class ExpenseService {
 
     @Transactional
     public ExpenseResponse approve(Long expenseId, ApprovalRequest request, User approver) {
-        Expense expense = findPendingExpense(expenseId);
+        Expense expense = findPendingExpense(expenseId, approver);
 
         saveApproval(expense, approver, "APPROVED", request.getComment());
 
@@ -160,7 +161,7 @@ public class ExpenseService {
 
     @Transactional
     public ExpenseResponse reject(Long expenseId, ApprovalRequest request, User approver) {
-        Expense expense = findPendingExpense(expenseId);
+        Expense expense = findPendingExpense(expenseId, approver);
 
         saveApproval(expense, approver, "REJECTED", request.getComment());
 
@@ -194,7 +195,16 @@ public class ExpenseService {
                 .collect(Collectors.toList());
     }
 
-    public List<ExpenseResponse> getPendingExpenses() {
+    public List<ExpenseResponse> getPendingExpenses(User user) {
+        if (user.getRole() == Role.BRANCH_MANAGER) {
+            if (user.getBranch() == null) {
+                throw new BadRequestException("Branch manager is not assigned to any branch");
+            }
+            return expenseRepository.findByBranchIdAndStatusOrderByCreatedAtDesc(user.getBranch().getId(), ExpenseStatus.PENDING).stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+        }
+
         return expenseRepository.findByStatus(ExpenseStatus.PENDING).stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
@@ -219,13 +229,19 @@ public class ExpenseService {
         log.info("Receipt URL set for expense {}: {}", expenseId, receiptUrl);
     }
 
-    private Expense findPendingExpense(Long expenseId) {
+    private Expense findPendingExpense(Long expenseId, User approver) {
         Expense expense = expenseRepository.findById(expenseId)
                 .orElseThrow(() -> new ResourceNotFoundException("Expense not found: " + expenseId));
 
         if (expense.getStatus() != ExpenseStatus.PENDING) {
             throw new BadRequestException(
                     "Expense is not in PENDING status. Current status: " + expense.getStatus());
+        }
+
+        if (approver.getRole() == Role.BRANCH_MANAGER) {
+            if (approver.getBranch() == null || !approver.getBranch().getId().equals(expense.getBranch().getId())) {
+                throw new AccessDeniedException("Branch managers can only access data for their own branch");
+            }
         }
 
         return expense;

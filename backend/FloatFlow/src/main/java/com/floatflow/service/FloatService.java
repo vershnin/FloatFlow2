@@ -15,6 +15,7 @@ import com.floatflow.repository.FloatRepository;
 import com.floatflow.repository.FloatTransactionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -68,6 +69,8 @@ public class FloatService {
         com.floatflow.entity.Float floatAllocation = floatRepository.findByIdForUpdate(floatId)
             .orElseThrow(() -> new ResourceNotFoundException("Float not found with ID: " + floatId));
 
+        assertBranchManagerScope(user, floatAllocation.getBranch().getId());
+
         if (floatAllocation.getStatus() == FloatStatus.CLOSED) {
             throw new BadRequestException("Cannot top up a closed float.");
         }
@@ -107,10 +110,27 @@ public class FloatService {
         return toResponse(floatAllocation);
     }
 
-    public List<FloatResponse> getAllFloats() {
+    public List<FloatResponse> getAllFloats(User user) {
+        if (user.getRole() == com.floatflow.entity.Role.BRANCH_MANAGER) {
+            if (user.getBranch() == null) {
+                throw new BadRequestException("Branch manager is not assigned to any branch");
+            }
+            return floatRepository.findByBranchId(user.getBranch().getId()).stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+        }
+
         return floatRepository.findAll().stream()
             .map(this::toResponse)
             .collect(Collectors.toList());
+    }
+
+    public List<FloatTransaction> getTransactions(Long floatId, User user) {
+        com.floatflow.entity.Float floatAllocation = floatRepository.findById(floatId)
+            .orElseThrow(() -> new ResourceNotFoundException("Float not found with ID: " + floatId));
+
+        assertBranchManagerScope(user, floatAllocation.getBranch().getId());
+        return floatTransactionRepository.findByFloatAllocationIdOrderByCreatedAtDesc(floatId);
     }
 
     public List<FloatResponse> getFloatsByBranch(Long branchId) {
@@ -181,5 +201,14 @@ public class FloatService {
             .createdAt(f.getCreatedAt())
             .balancePercentage(percentage)
             .build();
+    }
+
+    private void assertBranchManagerScope(User user, Long branchId) {
+        if (user.getRole() != com.floatflow.entity.Role.BRANCH_MANAGER) {
+            return;
+        }
+        if (user.getBranch() == null || !user.getBranch().getId().equals(branchId)) {
+            throw new AccessDeniedException("Branch managers can only access data for their own branch");
+        }
     }
 }

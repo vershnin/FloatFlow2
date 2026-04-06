@@ -54,6 +54,20 @@ public class BranchController {
         return ResponseEntity.ok(ApiResponse.success("Branch updated successfully", branch));
     }
 
+    @PatchMapping("/{id}/activate")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<BranchResponse>> activateBranch(@PathVariable Long id) {
+        BranchResponse branch = branchService.setBranchActive(id, true);
+        return ResponseEntity.ok(ApiResponse.success("Branch activated successfully", branch));
+    }
+
+    @PatchMapping("/{id}/deactivate")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<BranchResponse>> deactivateBranch(@PathVariable Long id) {
+        BranchResponse branch = branchService.setBranchActive(id, false);
+        return ResponseEntity.ok(ApiResponse.success("Branch deactivated successfully", branch));
+    }
+
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteBranch(@PathVariable Long id) {

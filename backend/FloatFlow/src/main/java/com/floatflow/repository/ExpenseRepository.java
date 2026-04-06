@@ -17,6 +17,7 @@ public interface ExpenseRepository extends JpaRepository<Expense, Long> {
     List<Expense> findByBranchIdOrderByCreatedAtDesc(Long branchId);
     List<Expense> findBySubmittedByIdOrderByCreatedAtDesc(Long userId);
     List<Expense> findByStatus(ExpenseStatus status);
+    List<Expense> findByBranchIdAndStatusOrderByCreatedAtDesc(Long branchId, ExpenseStatus status);
 
     /**
      * Calculates total amount spent in a specific category by a branch today.

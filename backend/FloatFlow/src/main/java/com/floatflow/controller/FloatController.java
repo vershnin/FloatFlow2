@@ -6,7 +6,6 @@ import com.floatflow.dto.response.ApiResponse;
 import com.floatflow.dto.response.FloatResponse;
 import com.floatflow.entity.FloatTransaction;
 import com.floatflow.entity.User;
-import com.floatflow.repository.FloatTransactionRepository;
 import com.floatflow.service.FloatService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -32,7 +31,6 @@ import java.util.List;
 public class FloatController {
 
     private final FloatService floatService;
-    private final FloatTransactionRepository floatTransactionRepository;
 
     @PostMapping
     @PreAuthorize("hasAnyRole('FINANCE_OFFICER', 'ADMIN')")
@@ -49,8 +47,10 @@ public class FloatController {
     @GetMapping
     @PreAuthorize("hasAnyRole('FINANCE_OFFICER', 'ADMIN', 'BRANCH_MANAGER')")
     @Operation(summary = "Get all floats (Finance, Admin, Branch Manager)")
-    public ResponseEntity<ApiResponse<List<FloatResponse>>> getAllFloats() {
-        return ResponseEntity.ok(ApiResponse.success("Floats retrieved", floatService.getAllFloats()));
+    public ResponseEntity<ApiResponse<List<FloatResponse>>> getAllFloats(
+            @AuthenticationPrincipal User currentUser
+    ) {
+        return ResponseEntity.ok(ApiResponse.success("Floats retrieved", floatService.getAllFloats(currentUser)));
     }
 
     @PutMapping("/{id}/topup")
@@ -79,9 +79,11 @@ public class FloatController {
     @GetMapping("/{id}/transactions")
     @PreAuthorize("hasAnyRole('FINANCE_OFFICER', 'ADMIN', 'BRANCH_MANAGER')")
     @Operation(summary = "Get transaction history for a float")
-    public ResponseEntity<ApiResponse<List<FloatTransaction>>> getTransactions(@PathVariable Long id) {
-        List<FloatTransaction> transactions =
-                floatTransactionRepository.findByFloatAllocationIdOrderByCreatedAtDesc(id);
+    public ResponseEntity<ApiResponse<List<FloatTransaction>>> getTransactions(
+            @PathVariable Long id,
+            @AuthenticationPrincipal User currentUser
+    ) {
+        List<FloatTransaction> transactions = floatService.getTransactions(id, currentUser);
         return ResponseEntity.ok(ApiResponse.success("Transactions retrieved", transactions));
     }
 }

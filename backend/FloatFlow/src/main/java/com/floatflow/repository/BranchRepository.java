@@ -9,4 +9,6 @@ public interface BranchRepository extends JpaRepository<Branch, Long> {
     boolean existsByName(String name);
     boolean existsByNameIgnoreCase(String name);
     boolean existsByNameIgnoreCaseAndIdNot(String name, Long id);
+    boolean existsByManagerId(Long managerId);
+    boolean existsByManagerIdAndIdNot(Long managerId, Long id);
 }
