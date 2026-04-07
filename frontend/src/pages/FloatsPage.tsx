@@ -1,16 +1,27 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Wallet, ArrowUpCircle, AlertTriangle, XCircle, Plus, RefreshCw } from "lucide-react";
-import { getFloats, type FloatResponse } from "@/api/floatService";
+import { closeFloat, getFloats, type FloatResponse } from "@/api/floatService";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { AllocateFloatModal } from "@/components/AllocateFloatModal";
 import { useAuth } from "@/context/AuthContext";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 // Map backend ACTIVE/EXHAUSTED to display config
 const statusConfig: Record<string, { icon: any; color: string; bg: string; label: string }> = {
@@ -22,6 +33,7 @@ const statusConfig: Record<string, { icon: any; color: string; bg: string; label
 
 // Derive display status from balance percentage
 function deriveStatus(float: FloatResponse): string {
+  if (float.status === "CLOSED") return "CLOSED";
   if (float.currentBalance <= 0) return "EXHAUSTED";
   const pct = (float.currentBalance / float.initialAmount) * 100;
   if (pct < 20) return "LOW";
@@ -39,6 +51,8 @@ export default function FloatsPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<"allocate" | "topup">("allocate");
   const [topUpFloatId, setTopUpFloatId] = useState<number | undefined>();
+  const [closeTarget, setCloseTarget] = useState<FloatResponse | null>(null);
+  const [isClosing, setIsClosing] = useState(false);
 
   const loadFloats = async () => {
     setLoading(true);
@@ -71,6 +85,21 @@ export default function FloatsPage() {
     setModalMode("topup");
     setTopUpFloatId(floatId);
     setModalOpen(true);
+  };
+
+  const handleCloseFloat = async () => {
+    if (!closeTarget) return;
+    setIsClosing(true);
+    try {
+      await closeFloat(closeTarget.id);
+      toast.success("Float closed successfully");
+      setCloseTarget(null);
+      await loadFloats();
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || "Failed to close float");
+    } finally {
+      setIsClosing(false);
+    }
   };
 
   if (loading) {
@@ -118,6 +147,7 @@ export default function FloatsPage() {
             <SelectItem value="ACTIVE">Active</SelectItem>
             <SelectItem value="LOW">Low</SelectItem>
             <SelectItem value="EXHAUSTED">Exhausted</SelectItem>
+            <SelectItem value="CLOSED">Closed</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -145,9 +175,14 @@ export default function FloatsPage() {
                 </div>
               </div>
               <div className="flex gap-2 mt-4">
-                {canManageFloat && (
+                {canManageFloat && stat !== "CLOSED" && (
                   <Button size="sm" variant="outline" className="flex-1" aria-label="Top up this float" onClick={() => openTopUp(f.id)}>
                     <ArrowUpCircle className="h-3 w-3" /> Top Up
+                  </Button>
+                )}
+                {canManageFloat && stat !== "CLOSED" && (
+                  <Button size="sm" variant="destructive" className="flex-1" aria-label="Close this float" onClick={() => setCloseTarget(f)}>
+                    <XCircle className="h-3 w-3" /> Close Float
                   </Button>
                 )}
               </div>
@@ -162,6 +197,26 @@ export default function FloatsPage() {
         mode={modalMode}
         floatId={topUpFloatId}
       />
+
+      <AlertDialog open={!!closeTarget} onOpenChange={(open) => { if (!open) setCloseTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Close Float</AlertDialogTitle>
+            <AlertDialogDescription>
+              Closing this float will prevent further top-ups and new expense submissions against it.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="text-sm text-muted-foreground">
+            {closeTarget ? `Branch: ${closeTarget.branchName}` : ""}
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isClosing}>Cancel</AlertDialogCancel>
+            <AlertDialogAction disabled={isClosing} onClick={(e) => { e.preventDefault(); void handleCloseFloat(); }}>
+              {isClosing ? "Closing..." : "Close Float"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
