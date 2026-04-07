@@ -12,7 +12,6 @@ import {
   markAllNotificationsRead,
   Notification,
 } from "@/api/notificationService";
-import { notifications as mockNotifications } from "@/mockData/enterprise";
 
 const typeIcons: Record<string, React.ElementType> = {
   expense_submitted: Receipt,
@@ -46,15 +45,11 @@ export function NotificationBell() {
     setIsLoading(true);
     try {
       const res = await getNotifications();
-      if (Array.isArray(res) && res.length > 0) {
-        setItems(res);
-      } else {
-        setItems(mockNotifications);
-      }
+      setItems(Array.isArray(res) ? res : []);
     } catch (error) {
       console.error("Failed to load notifications", error);
-      setItems(mockNotifications);
-      toast.error("Unable to load notifications. Using cached data.");
+      setItems([]);
+      toast.error("Unable to load notifications.");
     } finally {
       setIsLoading(false);
     }

@@ -13,7 +13,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
 import { useAuth } from "@/context/AuthContext";
 import { motion } from "framer-motion";
@@ -177,6 +177,9 @@ export default function ApprovalsPage() {
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Review Expense — #{detailModal?.id}</DialogTitle>
+            <DialogDescription>
+              Review the expense details and decide whether to approve or reject the submission.
+            </DialogDescription>
           </DialogHeader>
           {detailModal && (
             <div className="space-y-4">
