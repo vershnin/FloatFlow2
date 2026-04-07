@@ -2,10 +2,14 @@ package com.floatflow.repository;
 
 import com.floatflow.entity.Expense;
 import com.floatflow.entity.ExpenseStatus;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Repository;
+
+import java.util.Optional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -14,10 +18,37 @@ import java.util.List;
 @Repository
 public interface ExpenseRepository extends JpaRepository<Expense, Long> {
 
-    List<Expense> findByBranchIdOrderByCreatedAtDesc(Long branchId);
-    List<Expense> findBySubmittedByIdOrderByCreatedAtDesc(Long userId);
-    List<Expense> findByStatus(ExpenseStatus status);
-    List<Expense> findByBranchIdAndStatusOrderByCreatedAtDesc(Long branchId, ExpenseStatus status);
+    /**
+     * Single-entity load used by submit / approve / reject / updateReceiptUrl.
+     * Pre-loads submittedBy and branch so toResponse() never hits a detached proxy,
+     * and avoids N+1 SELECT queries per mutation endpoint.
+     */
+    @Override
+    @NonNull
+    @EntityGraph(attributePaths = {"submittedBy", "branch"})
+    Optional<Expense> findById(@NonNull Long id);
+
+
+    @Query("SELECT e FROM Expense e JOIN FETCH e.submittedBy JOIN FETCH e.branch WHERE e.branch.id = :branchId ORDER BY e.createdAt DESC")
+    List<Expense> findByBranchIdOrderByCreatedAtDesc(@Param("branchId") Long branchId);
+
+    @Query("SELECT e FROM Expense e " +
+           "JOIN FETCH e.submittedBy " +
+           "JOIN FETCH e.branch " +
+           "JOIN FETCH e.floatAllocation fa " +
+           "WHERE e.submittedBy.id = :userId ORDER BY e.createdAt DESC")
+    List<Expense> findBySubmittedByIdOrderByCreatedAtDesc(@Param("userId") Long userId);
+
+    @Query("SELECT e FROM Expense e JOIN FETCH e.submittedBy JOIN FETCH e.branch WHERE e.status = :status")
+    List<Expense> findByStatus(@Param("status") ExpenseStatus status);
+
+    @Query("SELECT e FROM Expense e JOIN FETCH e.submittedBy JOIN FETCH e.branch WHERE e.branch.id = :branchId AND e.status = :status ORDER BY e.createdAt DESC")
+    List<Expense> findByBranchIdAndStatusOrderByCreatedAtDesc(@Param("branchId") Long branchId, @Param("status") ExpenseStatus status);
+
+    @Override
+    @Query("SELECT e FROM Expense e JOIN FETCH e.submittedBy JOIN FETCH e.branch")
+    @org.springframework.lang.NonNull
+    List<Expense> findAll();
 
     /**
      * Calculates total amount spent in a specific category by a branch today.

@@ -115,6 +115,11 @@ export function SubmitExpenseModal({ open, onClose }: SubmitExpenseModalProps) {
   };
 
   const handleSubmit = async (mode: "DRAFT" | "PENDING") => {
+    if (floats.length === 0) {
+      toast.error("No active float available for your branch");
+      return;
+    }
+
     if (!amount || !category || !description || !floatId) {
       toast.error("Please fill all required fields");
       return;
@@ -219,6 +224,9 @@ export function SubmitExpenseModal({ open, onClose }: SubmitExpenseModalProps) {
                 ))}
               </SelectContent>
             </Select>
+            {floats.length === 0 && (
+              <p className="text-xs text-destructive">No active float is available for your branch.</p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -267,7 +275,7 @@ export function SubmitExpenseModal({ open, onClose }: SubmitExpenseModalProps) {
                 )}
               </div>
             ) : (
-              <div className="flex items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/25 p-6 hover:border-muted-foreground/50 transition-colors">
+              <div className="relative flex items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/25 p-6 hover:border-muted-foreground/50 transition-colors">
                 <input
                   type="file"
                   accept="image/*,.pdf"

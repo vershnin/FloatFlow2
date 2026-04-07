@@ -88,6 +88,17 @@ public class ExpenseController {
         );
     }
 
+    @GetMapping("/branch")
+    @PreAuthorize("hasAnyRole('BRANCH_MANAGER', 'FINANCE_OFFICER', 'ADMIN')")
+    @Operation(summary = "Get all expenses for authenticated user's branch")
+    public ResponseEntity<ApiResponse<List<ExpenseResponse>>> getBranchExpenses(
+            @AuthenticationPrincipal User currentUser
+    ) {
+        return ResponseEntity.ok(
+                ApiResponse.success("Branch expenses retrieved", expenseService.getExpensesForBranch(currentUser))
+        );
+    }
+
     @PutMapping("/{id}/approve")
     @PreAuthorize("hasAnyRole('BRANCH_MANAGER', 'FINANCE_OFFICER', 'ADMIN')")
     @Operation(summary = "Approve an expense — triggers float deduction")

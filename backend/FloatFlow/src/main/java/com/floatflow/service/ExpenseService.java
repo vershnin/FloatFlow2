@@ -185,18 +185,21 @@ public class ExpenseService {
         return toResponse(expense);
     }
 
+    @Transactional(readOnly = true)
     public List<ExpenseResponse> getAllExpenses() {
         return expenseRepository.findAll().stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<ExpenseResponse> getMyExpenses(User user) {
         return expenseRepository.findBySubmittedByIdOrderByCreatedAtDesc(user.getId()).stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<ExpenseResponse> getPendingExpenses(User user) {
         if (user.getRole() == Role.BRANCH_MANAGER) {
             if (user.getBranch() == null) {
@@ -208,6 +211,23 @@ public class ExpenseService {
         }
 
         return expenseRepository.findByStatus(ExpenseStatus.PENDING).stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<ExpenseResponse> getExpensesForBranch(User user) {
+        if (user.getRole() == Role.BRANCH_MANAGER) {
+            if (user.getBranch() == null) {
+                throw new BadRequestException("Branch manager is not assigned to any branch");
+            }
+            return expenseRepository.findByBranchIdOrderByCreatedAtDesc(user.getBranch().getId()).stream()
+                    .map(this::toResponse)
+                    .collect(Collectors.toList());
+        }
+
+        // For FINANCE_OFFICER and ADMIN, return all expenses
+        return expenseRepository.findAll().stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
     }

@@ -110,6 +110,7 @@ public class FloatService {
         return toResponse(floatAllocation);
     }
 
+    @Transactional(readOnly = true)
     public List<FloatResponse> getAllFloats(User user) {
         if (user.getRole() == com.floatflow.entity.Role.BRANCH_MANAGER) {
             if (user.getBranch() == null) {
@@ -125,6 +126,7 @@ public class FloatService {
             .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<FloatTransaction> getTransactions(Long floatId, User user) {
         com.floatflow.entity.Float floatAllocation = floatRepository.findById(floatId)
             .orElseThrow(() -> new ResourceNotFoundException("Float not found with ID: " + floatId));
@@ -133,12 +135,14 @@ public class FloatService {
         return floatTransactionRepository.findByFloatAllocationIdOrderByCreatedAtDesc(floatId);
     }
 
+    @Transactional(readOnly = true)
     public List<FloatResponse> getFloatsByBranch(Long branchId) {
         return floatRepository.findByBranchId(branchId).stream()
             .map(this::toResponse)
             .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public FloatResponse getActiveFloatForMyBranch(User user) {
         if (user.getBranch() == null) {
             throw new BadRequestException("User is not assigned to any branch");
