@@ -4,10 +4,12 @@ import com.floatflow.dto.response.BranchReportResponse;
 import com.floatflow.entity.Branch;
 import com.floatflow.entity.ExpenseStatus;
 import com.floatflow.entity.FloatStatus;
+import com.floatflow.entity.FloatTransaction;
 import com.floatflow.exception.ResourceNotFoundException;
 import com.floatflow.repository.BranchRepository;
 import com.floatflow.repository.ExpenseRepository;
 import com.floatflow.repository.FloatRepository;
+import com.floatflow.repository.FloatTransactionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,6 +30,7 @@ public class ReportingService {
     private final BranchRepository branchRepository;
     private final ExpenseRepository expenseRepository;
     private final FloatRepository floatRepository;
+    private final FloatTransactionRepository floatTransactionRepository;
 
     @Transactional(readOnly = true)
     public BranchReportResponse getBranchReport(Long branchId) {
@@ -39,8 +42,8 @@ public class ReportingService {
             .filter(f -> f.getStatus() == FloatStatus.ACTIVE || f.getStatus() == FloatStatus.EXHAUSTED)
             .collect(Collectors.toList());
 
-        BigDecimal totalInitial = activeFloats.stream()
-            .map(com.floatflow.entity.Float::getInitialAmount)
+        BigDecimal totalAllocated = activeFloats.stream()
+            .map(this::sumAllocatedFunds)
             .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         BigDecimal remainingBalance = activeFloats.stream()
@@ -60,13 +63,26 @@ public class ReportingService {
         return BranchReportResponse.builder()
             .branchId(branchId)
             .branchName(branch.getName())
-            .totalFloatAllocated(totalInitial)
+            .totalFloatAllocated(totalAllocated)
             .totalExpensesApproved(totalApproved)
             .remainingFloat(remainingBalance)
             .pendingExpensesCount(pendingCount)
             .approvedExpensesCount(approvedCount)
             .rejectedExpensesCount(rejectedCount)
             .build();
+    }
+
+    private BigDecimal sumAllocatedFunds(com.floatflow.entity.Float floatAllocation) {
+        return floatTransactionRepository.findByFloatAllocationIdOrderByCreatedAtDesc(floatAllocation.getId()).stream()
+            .filter(tx -> isAllocationTransaction(tx, floatAllocation))
+            .map(FloatTransaction::getAmount)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    private boolean isAllocationTransaction(FloatTransaction tx, com.floatflow.entity.Float floatAllocation) {
+        return tx.getFloatAllocation() != null
+            && tx.getFloatAllocation().getId().equals(floatAllocation.getId())
+            && ("INITIAL_ALLOCATION".equals(tx.getType()) || "TOPUP".equals(tx.getType()));
     }
 
     @Transactional(readOnly = true)

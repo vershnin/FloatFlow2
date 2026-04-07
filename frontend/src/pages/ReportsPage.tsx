@@ -1,28 +1,30 @@
-import { useState, useEffect } from "react";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Legend } from "recharts";
-import { getSummaryReport, ReportSummary } from "@/api/reportService";
+import { useEffect, useMemo, useState } from "react";
+import { getBranchReport, getSummaryReport, type BranchReport } from "@/api/reportService";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FileDown, FileSpreadsheet, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
-
-const COLORS = ["hsl(224,76%,33%)", "hsl(160,84%,39%)", "hsl(38,92%,50%)", "hsl(224,76%,48%)", "hsl(160,60%,50%)", "hsl(220,14%,70%)"];
+import { useAuth } from "@/context/AuthContext";
 
 export default function ReportsPage() {
-  const [period, setPeriod] = useState("6m");
-  const [reportData, setReportData] = useState<ReportSummary | null>(null);
+  const { user } = useAuth();
+  const [summaryData, setSummaryData] = useState<BranchReport[]>([]);
+  const [selectedBranchId, setSelectedBranchId] = useState<string>("");
+  const [branchReport, setBranchReport] = useState<BranchReport | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchReportData = async () => {
+    const fetchSummaryData = async () => {
       setIsLoading(true);
       setError(null);
       try {
-        const data = await getSummaryReport(period);
-        setReportData(data);
+        const data = await getSummaryReport();
+        setSummaryData(data);
+        const preferredBranchId = user?.branchId ? String(user.branchId) : String(data[0]?.branchId ?? "");
+        setSelectedBranchId((current) => current || preferredBranchId);
       } catch (err: any) {
         setError(err.response?.data?.message || "Failed to load report data");
         toast.error("Failed to load report data");
@@ -31,12 +33,48 @@ export default function ReportsPage() {
       }
     };
 
-    fetchReportData();
-  }, [period]);
+    fetchSummaryData();
+  }, [user?.branchId]);
 
-  const handleExport = (format: string) => {
-    toast.success(`Exporting ${format.toUpperCase()} report...`, { description: "Your download will begin shortly" });
-  };
+  useEffect(() => {
+    if (!selectedBranchId) {
+      setBranchReport(null);
+      return;
+    }
+
+    const fetchBranchReport = async () => {
+      try {
+        const data = await getBranchReport(Number(selectedBranchId));
+        setBranchReport(data);
+      } catch (err: any) {
+        toast.error(err.response?.data?.message || "Failed to load branch report");
+      }
+    };
+
+    void fetchBranchReport();
+  }, [selectedBranchId]);
+
+  const totals = useMemo(() => {
+    return summaryData.reduce(
+      (acc, branch) => {
+        acc.totalFloatAllocated += branch.totalFloatAllocated;
+        acc.totalExpensesApproved += branch.totalExpensesApproved;
+        acc.remainingFloat += branch.remainingFloat;
+        acc.pendingExpensesCount += branch.pendingExpensesCount;
+        acc.approvedExpensesCount += branch.approvedExpensesCount;
+        acc.rejectedExpensesCount += branch.rejectedExpensesCount;
+        return acc;
+      },
+      {
+        totalFloatAllocated: 0,
+        totalExpensesApproved: 0,
+        remainingFloat: 0,
+        pendingExpensesCount: 0,
+        approvedExpensesCount: 0,
+        rejectedExpensesCount: 0,
+      }
+    );
+  }, [summaryData]);
 
   if (isLoading) {
     return (
@@ -47,11 +85,11 @@ export default function ReportsPage() {
     );
   }
 
-  if (error || !reportData) {
+  if (error) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
-          <p className="text-destructive mb-4">{error || "Failed to load report data"}</p>
+          <p className="text-destructive mb-4">{error}</p>
           <Button onClick={() => window.location.reload()}>Retry</Button>
         </div>
       </div>
@@ -60,31 +98,23 @@ export default function ReportsPage() {
 
   return (
     <div>
-      <PageHeader title="Reports & Analytics" description="Financial insights and performance metrics">
-        <Select value={period} onValueChange={setPeriod}>
-          <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
+      <PageHeader title="Reports" description="Branch-level float allocation and approval totals">
+        <Select value={selectedBranchId} onValueChange={setSelectedBranchId}>
+          <SelectTrigger className="w-56"><SelectValue placeholder="Select branch" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="1m">Last Month</SelectItem>
-            <SelectItem value="3m">Last 3 Months</SelectItem>
-            <SelectItem value="6m">Last 6 Months</SelectItem>
-            <SelectItem value="1y">Last Year</SelectItem>
+            {summaryData.map((branch) => (
+              <SelectItem key={branch.branchId} value={String(branch.branchId)}>{branch.branchName}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
-        <Button variant="outline" onClick={() => handleExport("pdf")}>
-          <FileDown className="h-4 w-4" /> PDF
-        </Button>
-        <Button variant="outline" onClick={() => handleExport("excel")}>
-          <FileSpreadsheet className="h-4 w-4" /> Excel
-        </Button>
       </PageHeader>
 
-      {/* KPI row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {[
-          { label: "Total Expenses", value: `KES ${reportData.totalExpenses.toLocaleString()}` },
-          { label: "Total Float Allocated", value: `KES ${reportData.totalFloatAllocated.toLocaleString()}` },
-          { label: "Approval Rate", value: `${(reportData.approvalRate * 100).toFixed(1)}%` },
-          { label: "Avg Processing Time", value: `${reportData.averageProcessingTime.toFixed(1)} days` },
+          { label: "Branches", value: summaryData.length.toString() },
+          { label: "Total Float Allocated", value: `KES ${totals.totalFloatAllocated.toLocaleString()}` },
+          { label: "Approved Expenses", value: `KES ${totals.totalExpensesApproved.toLocaleString()}` },
+          { label: "Remaining Float", value: `KES ${totals.remainingFloat.toLocaleString()}` },
         ].map((s, i) => (
           <motion.div key={s.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} className="glass-card p-5">
             <p className="text-sm text-muted-foreground">{s.label}</p>
@@ -93,81 +123,90 @@ export default function ReportsPage() {
         ))}
       </div>
 
-      {/* Expense Summary Chart */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-        <div className="glass-card p-5 lg:col-span-2">
-          <h3 className="text-sm font-semibold mb-4">Expense Summary Trend</h3>
-          <ResponsiveContainer width="100%" height={280}>
-            <LineChart data={reportData.monthlyExpenseTrend}>
-              <XAxis dataKey="month" tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
-              <Tooltip />
-              <Legend />
-              <Line type="monotone" dataKey="submitted" stroke="hsl(224,76%,33%)" strokeWidth={2} dot={{ r: 4 }} name="Submitted" />
-              <Line type="monotone" dataKey="approved" stroke="hsl(160,84%,39%)" strokeWidth={2} dot={{ r: 4 }} name="Approved" />
-              <Line type="monotone" dataKey="rejected" stroke="hsl(0,72%,51%)" strokeWidth={2} dot={{ r: 4 }} name="Rejected" />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
         <div className="glass-card p-5">
-          <h3 className="text-sm font-semibold mb-4">Float Usage</h3>
-          <ResponsiveContainer width="100%" height={180}>
-            <PieChart>
-              <Pie data={reportData.floatUsage} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={4}>
-                <Cell fill="hsl(224,76%,33%)" />
-                <Cell fill="hsl(160,84%,39%)" />
-              </Pie>
-              <Tooltip formatter={(v: number) => `KES ${v.toLocaleString()}`} />
-            </PieChart>
-          </ResponsiveContainer>
-          <div className="flex justify-center gap-4 mt-2">
-            {reportData.floatUsage.map((item, i) => (
-              <div key={item.name} className="flex items-center gap-1.5 text-xs">
-                <span className="h-2.5 w-2.5 rounded-full" style={{ background: i === 0 ? "hsl(224,76%,33%)" : "hsl(160,84%,39%)" }} />
-                <span className="text-muted-foreground">{item.name}: KES {item.value.toLocaleString()}</span>
-              </div>
+          <h3 className="text-sm font-semibold mb-4">Summary By Branch</h3>
+          <div className="space-y-3">
+            {summaryData.map((branch, index) => (
+              <motion.button
+                key={branch.branchId}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.04 }}
+                type="button"
+                onClick={() => setSelectedBranchId(String(branch.branchId))}
+                className="w-full rounded-lg border p-4 text-left hover:bg-muted/40 transition-colors"
+              >
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="font-semibold">{branch.branchName}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Pending {branch.pendingExpensesCount} • Approved {branch.approvedExpensesCount} • Rejected {branch.rejectedExpensesCount}
+                    </p>
+                  </div>
+                  <div className="text-right text-sm">
+                    <p className="font-medium">KES {branch.remainingFloat.toLocaleString()}</p>
+                    <p className="text-xs text-muted-foreground">Remaining float</p>
+                  </div>
+                </div>
+              </motion.button>
             ))}
+            {summaryData.length === 0 && (
+              <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
+                No branch report data available.
+              </div>
+            )}
           </div>
         </div>
-      </div>
-
-      {/* Branch Comparison & Category */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="glass-card p-5">
-          <h3 className="text-sm font-semibold mb-4">Branch Comparison</h3>
-          <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={reportData.branchComparison} layout="vertical">
-              <XAxis type="number" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v / 1000}K`} />
-              <YAxis type="category" dataKey="branch" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} width={90} />
-              <Tooltip formatter={(v: number) => `KES ${v.toLocaleString()}`} />
-              <Legend />
-              <Bar dataKey="float" fill="hsl(224,76%,33%)" radius={[0, 4, 4, 0]} name="Float" barSize={14} />
-              <Bar dataKey="expenses" fill="hsl(160,84%,39%)" radius={[0, 4, 4, 0]} name="Expenses" barSize={14} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
 
         <div className="glass-card p-5">
-          <h3 className="text-sm font-semibold mb-4">Expense by Category</h3>
-          <ResponsiveContainer width="100%" height={220}>
-            <PieChart>
-              <Pie data={reportData.categoryBreakdown} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} paddingAngle={3}>
-                {reportData.categoryBreakdown.map((_, i) => (
-                  <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip />
-            </PieChart>
-          </ResponsiveContainer>
-          <div className="grid grid-cols-2 gap-1 mt-2">
-            {reportData.categoryBreakdown.map((c, i) => (
-              <div key={c.name} className="flex items-center gap-1.5 text-xs">
-                <span className="h-2 w-2 rounded-full shrink-0" style={{ background: COLORS[i % COLORS.length] }} />
-                <span className="text-muted-foreground truncate">{c.name} ({c.value}%)</span>
+          <h3 className="text-sm font-semibold mb-4">Selected Branch Detail</h3>
+          {branchReport ? (
+            <div className="space-y-4">
+              <div>
+                <p className="text-lg font-bold">{branchReport.branchName}</p>
+                <p className="text-sm text-muted-foreground">Current branch report response from backend</p>
               </div>
-            ))}
-          </div>
+
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="rounded-lg bg-muted/50 p-3">
+                  <p className="text-muted-foreground">Allocated Float</p>
+                  <p className="mt-1 font-semibold">KES {branchReport.totalFloatAllocated.toLocaleString()}</p>
+                </div>
+                <div className="rounded-lg bg-muted/50 p-3">
+                  <p className="text-muted-foreground">Approved Expenses</p>
+                  <p className="mt-1 font-semibold">KES {branchReport.totalExpensesApproved.toLocaleString()}</p>
+                </div>
+                <div className="rounded-lg bg-muted/50 p-3">
+                  <p className="text-muted-foreground">Remaining Float</p>
+                  <p className="mt-1 font-semibold">KES {branchReport.remainingFloat.toLocaleString()}</p>
+                </div>
+                <div className="rounded-lg bg-muted/50 p-3">
+                  <p className="text-muted-foreground">Total Decisions</p>
+                  <p className="mt-1 font-semibold">{branchReport.approvedExpensesCount + branchReport.rejectedExpensesCount}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3 text-center">
+                <div className="rounded-lg border p-3">
+                  <p className="text-xs text-muted-foreground">Pending</p>
+                  <p className="mt-1 text-xl font-bold">{branchReport.pendingExpensesCount}</p>
+                </div>
+                <div className="rounded-lg border p-3">
+                  <p className="text-xs text-muted-foreground">Approved</p>
+                  <p className="mt-1 text-xl font-bold">{branchReport.approvedExpensesCount}</p>
+                </div>
+                <div className="rounded-lg border p-3">
+                  <p className="text-xs text-muted-foreground">Rejected</p>
+                  <p className="mt-1 text-xl font-bold">{branchReport.rejectedExpensesCount}</p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
+              Select a branch to view report details.
+            </div>
+          )}
         </div>
       </div>
     </div>
