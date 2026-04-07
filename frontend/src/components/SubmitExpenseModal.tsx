@@ -6,12 +6,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { submitExpense, uploadReceipt } from "@/api/expenseService";
-import { getFloats, type FloatResponse } from "@/api/floatService";
+import { getFloats, getMyBranchActiveFloat, type FloatResponse } from "@/api/floatService";
 import { getPolicies, type PolicyResponse } from "@/api/policyService";
 import { AlertTriangle, Upload, X, FileText } from "lucide-react";
 import { toast } from "sonner";
 import axios from "axios";
 import { sanitizeText, SecureStorage } from "@/lib/security";
+import { useAuth } from "@/context/AuthContext";
 
 const EXPENSE_CATEGORIES = [
   "Office Supplies", "Transport", "Meals & Entertainment", "Repairs & Maintenance",
@@ -24,6 +25,7 @@ interface SubmitExpenseModalProps {
 }
 
 export function SubmitExpenseModal({ open, onClose }: SubmitExpenseModalProps) {
+  const { user } = useAuth();
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
@@ -38,10 +40,29 @@ export function SubmitExpenseModal({ open, onClose }: SubmitExpenseModalProps) {
 
   useEffect(() => {
     if (open) {
-      getFloats().then(setFloats).catch(() => {});
+      const loadFloatOptions = async () => {
+        try {
+          if (user?.role === "EMPLOYEE") {
+            const activeFloat = await getMyBranchActiveFloat();
+            setFloats(activeFloat && activeFloat.status === "ACTIVE" ? [activeFloat] : []);
+            return;
+          }
+
+          const availableFloats = await getFloats();
+          setFloats(availableFloats.filter((float) => float.status === "ACTIVE"));
+        } catch (error: any) {
+          setFloats([]);
+          const message = error?.response?.data?.message;
+          if (message && open) {
+            toast.error(message);
+          }
+        }
+      };
+
+      void loadFloatOptions();
       getPolicies().then(setPolicies).catch(() => {});
     }
-  }, [open]);
+  }, [open, user?.role]);
 
   const checkPolicies = (amt: number, cat: string) => {
     const v: string[] = [];

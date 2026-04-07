@@ -51,6 +51,11 @@ export const getFloats = async (params?: {
   return data?.content ?? [];
 };
 
+export const getMyBranchActiveFloat = async (): Promise<FloatResponse | null> => {
+  const res = await apiClient.get("/floats/active/my-branch");
+  return res.data?.data ?? null;
+};
+
 export const createFloat = async (data: CreateFloatRequest): Promise<FloatResponse> => {
   const res = await apiClient.post("/floats", data);
   return res.data.data;
