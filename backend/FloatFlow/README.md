@@ -154,13 +154,20 @@ http://localhost:8080/swagger-ui.html
 | POST | `/api/auth/register` | Create new user |
 | POST | `/api/auth/login` | Login and get JWT |
 
-### Floats (Finance Officer / Admin)
+### Floats
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | POST | `/api/floats` | Allocate a new float to a branch |
 | GET | `/api/floats` | List all floats |
+| GET | `/api/floats/active/my-branch` | Get the active float for the authenticated user's own branch |
 | PUT | `/api/floats/{id}/topup` | Add money to a float |
 | GET | `/api/floats/{id}/transactions` | View transaction history |
+
+`GET /api/floats/active/my-branch` contract:
+- Access: `EMPLOYEE`, `BRANCH_MANAGER`, `FINANCE_OFFICER`, `ADMIN`.
+- Branch scope: derived from the authenticated user principal (no branch request params).
+- Success payload fields: `id`, `branchId`, `branchName`, `initialAmount`, `currentBalance`, `balancePercentage`, `status`, `createdByName`, `createdAt`.
+- No active float for the user's branch: returns the standard not-found response (`404`) with an `Active float not found...` message.
 
 ### Expenses (All Authenticated Users)
 | Method | Endpoint | Description |
