@@ -3,10 +3,13 @@ package com.floatflow.entity;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
+import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -52,8 +55,29 @@ public class Policy {
     }
 
     @Builder.Default
-    @JsonProperty("enabled")
+    @Getter(AccessLevel.NONE)
+    @Setter(AccessLevel.NONE)
     private boolean isActive = true;
+
+    @JsonIgnore
+    public boolean isActive() {
+        return isActive;
+    }
+
+    @JsonIgnore
+    public void setActive(boolean active) {
+        this.isActive = active;
+    }
+
+    @JsonProperty("enabled")
+    public boolean getEnabled() {
+        return isActive;
+    }
+
+    @JsonProperty("enabled")
+    public void setEnabled(boolean enabled) {
+        this.isActive = enabled;
+    }
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
