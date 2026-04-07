@@ -59,7 +59,9 @@ public class ExpenseService {
         Expense expense = Expense.builder()
                 .floatAllocation(floatAllocation)
                 .submittedBy(submittedBy)
-                .branch(submittedBy.getBranch())
+                // Use the branch loaded with the active float (managed in this transaction),
+                // not the potentially detached branch proxy from the authenticated principal.
+                .branch(floatAllocation.getBranch())
                 .amount(request.getAmount())
                 .category(request.getCategory())
                 .description(request.getDescription())
