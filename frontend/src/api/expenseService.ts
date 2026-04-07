@@ -11,7 +11,7 @@ export interface ExpenseResponse {
   category: string;
   description: string;
   receiptUrl?: string;
-  status: "PENDING" | "APPROVED" | "REJECTED" | "WITHDRAWN";
+  status: "DRAFT" | "PENDING" | "APPROVED" | "REJECTED" | "WITHDRAWN";
   createdAt: string;
   policyViolations?: PolicyViolation[];
   approvalChain?: Approval[];
@@ -38,6 +38,7 @@ export interface SubmitExpenseRequest {
   category: string;
   description: string;
   receiptUrl?: string;
+  status?: "DRAFT" | "PENDING";
 }
 
 export interface ExpensePageResponse {
@@ -134,6 +135,11 @@ export const submitExpense = async (
   data: SubmitExpenseRequest
 ): Promise<ExpenseResponse> => {
   const res = await apiClient.post("/expenses", data);
+  return res.data.data;
+};
+
+export const submitDraftExpense = async (expenseId: number): Promise<ExpenseResponse> => {
+  const res = await apiClient.post(`/expenses/${expenseId}/submit`);
   return res.data.data;
 };
 

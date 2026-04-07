@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { Search, Plus } from "lucide-react";
-import { getExpenses, getMyExpenses, type ExpenseResponse } from "@/api/expenseService";
+import { getExpenses, getMyExpenses, submitDraftExpense, type ExpenseResponse } from "@/api/expenseService";
 import { useAuth } from "@/context/AuthContext";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { SubmitExpenseModal } from "@/components/SubmitExpenseModal";
 import { motion } from "framer-motion";
 import { debounce } from "@/lib/performance";
+import { toast } from "sonner";
 
 export default function ExpensesPage() {
   const { user } = useAuth();
@@ -43,6 +44,16 @@ export default function ExpensesPage() {
 
   useEffect(() => { loadExpenses(); }, []);
 
+  const handleDraftSubmit = async (expenseId: number) => {
+    try {
+      await submitDraftExpense(expenseId);
+      toast.success("Draft submitted for approval");
+      await loadExpenses();
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || "Failed to submit draft");
+    }
+  };
+
   const filtered = expenses.filter((exp) => {
     if (statusFilter !== "all" && exp.status !== statusFilter) return false;
     if (debouncedSearchQuery) {
@@ -57,7 +68,7 @@ export default function ExpensesPage() {
     return true;
   });
 
-  const statuses = ["all", "PENDING", "APPROVED", "REJECTED", "WITHDRAWN"] as const;
+  const statuses = ["all", "DRAFT", "PENDING", "APPROVED", "REJECTED", "WITHDRAWN"] as const;
 
   if (loading) {
     return <div className="flex items-center justify-center h-64 text-muted-foreground">Loading expenses...</div>;
@@ -115,11 +126,12 @@ export default function ExpensesPage() {
                 <th className="px-5 py-3 font-medium">Submitted By</th>
                 <th className="px-5 py-3 font-medium">Status</th>
                 <th className="px-5 py-3 font-medium">Date</th>
+                <th className="px-5 py-3 font-medium">Actions</th>
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 ? (
-                <tr><td colSpan={8} className="px-5 py-12 text-center text-muted-foreground">No expenses found</td></tr>
+                <tr><td colSpan={9} className="px-5 py-12 text-center text-muted-foreground">No expenses found</td></tr>
               ) : (
                 filtered.map((exp) => (
                   <tr key={exp.id} className="border-b last:border-0 hover:bg-muted/50 transition-colors">
@@ -132,6 +144,15 @@ export default function ExpensesPage() {
                     <td className="px-5 py-3"><StatusBadge status={exp.status.toLowerCase()} /></td>
                     <td className="px-5 py-3 text-muted-foreground">
                       {exp.createdAt ? new Date(exp.createdAt).toLocaleDateString() : "—"}
+                    </td>
+                    <td className="px-5 py-3">
+                      {exp.status === "DRAFT" ? (
+                        <Button size="sm" variant="outline" onClick={() => void handleDraftSubmit(exp.id)}>
+                          Submit Draft
+                        </Button>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </td>
                   </tr>
                 ))

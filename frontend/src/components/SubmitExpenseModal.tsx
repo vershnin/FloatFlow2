@@ -47,7 +47,7 @@ export function SubmitExpenseModal({ open, onClose }: SubmitExpenseModalProps) {
     const v: string[] = [];
     for (const p of policies) {
       if (!p.enabled) continue;
-      if (amt > p.maxAmount) {
+      if (p.category === cat && amt > p.maxAmount) {
         v.push(`Exceeds maximum expense limit of KES ${p.maxAmount.toLocaleString()} (${p.name})`);
       }
       if (p.category === cat && amt > p.dailyLimit) {
@@ -93,8 +93,7 @@ export function SubmitExpenseModal({ open, onClose }: SubmitExpenseModalProps) {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (mode: "DRAFT" | "PENDING") => {
     if (!amount || !category || !description || !floatId) {
       toast.error("Please fill all required fields");
       return;
@@ -106,6 +105,7 @@ export function SubmitExpenseModal({ open, onClose }: SubmitExpenseModalProps) {
         category: sanitizeText(category),
         description: sanitizeText(description),
         floatId: Number(floatId),
+        status: mode,
       });
 
       // Upload receipt if provided
@@ -134,7 +134,7 @@ export function SubmitExpenseModal({ open, onClose }: SubmitExpenseModalProps) {
           setUploadProgress(0);
         }
       } else {
-        toast.success("Expense submitted successfully");
+        toast.success(mode === "DRAFT" ? "Expense saved as draft" : "Expense submitted successfully");
       }
 
       setAmount(""); setCategory(""); setDescription(""); setFloatId(""); setReceiptFile(null); setReceiptPreview(null); setUploadProgress(0); setViolations([]);
@@ -143,7 +143,7 @@ export function SubmitExpenseModal({ open, onClose }: SubmitExpenseModalProps) {
       if (error.response?.data?.policyViolations) {
         const serverViolations = error.response.data.policyViolations.map((v: any) => v.message);
         setViolations(serverViolations);
-        toast.error("Expense submission blocked by policy");
+        toast.error(mode === "DRAFT" ? "Draft save failed" : "Expense submission blocked by policy");
       } else {
         toast.error(error.response?.data?.message || "Failed to submit expense");
       }
@@ -158,7 +158,7 @@ export function SubmitExpenseModal({ open, onClose }: SubmitExpenseModalProps) {
         <DialogHeader>
           <DialogTitle>Submit Expense</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={(e) => { e.preventDefault(); void handleSubmit("PENDING"); }} className="space-y-4">
           {violations.length > 0 && (
             <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 space-y-1">
               <div className="flex items-center gap-2 text-sm font-medium text-destructive">
@@ -269,6 +269,9 @@ export function SubmitExpenseModal({ open, onClose }: SubmitExpenseModalProps) {
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+            <Button type="button" variant="secondary" disabled={isSubmitting || uploadProgress > 0} onClick={() => void handleSubmit("DRAFT")}>
+              {isSubmitting ? "Saving..." : "Save Draft"}
+            </Button>
             <Button type="submit" disabled={isSubmitting || violations.length > 0 || uploadProgress > 0}>
               {isSubmitting ? "Submitting..." : uploadProgress > 0 ? `Uploading... ${uploadProgress}%` : "Submit Expense"}
             </Button>
