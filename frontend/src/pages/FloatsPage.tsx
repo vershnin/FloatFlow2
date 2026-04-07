@@ -31,6 +31,7 @@ function deriveStatus(float: FloatResponse): string {
 export default function FloatsPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === "ADMIN";
+  const canManageFloat = user?.role === "ADMIN" || user?.role === "FINANCE_OFFICER";
   const navigate = useNavigate();
   const [floats, setFloats] = useState<FloatResponse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -85,9 +86,11 @@ export default function FloatsPage() {
               <Plus className="h-4 w-4" /> Manage Branches
             </Button>
           )}
-          <Button onClick={() => { setModalMode("allocate"); setTopUpFloatId(undefined); setModalOpen(true); }}>
-            <Plus className="h-4 w-4" /> Allocate Float
-          </Button>
+          {canManageFloat && (
+            <Button onClick={() => { setModalMode("allocate"); setTopUpFloatId(undefined); setModalOpen(true); }}>
+              <Plus className="h-4 w-4" /> Allocate Float
+            </Button>
+          )}
         </div>
       </PageHeader>
 
@@ -142,9 +145,11 @@ export default function FloatsPage() {
                 </div>
               </div>
               <div className="flex gap-2 mt-4">
-                <Button size="sm" variant="outline" className="flex-1" aria-label="Top up this float" onClick={() => openTopUp(f.id)}>
-                  <ArrowUpCircle className="h-3 w-3" /> Top Up
-                </Button>
+                {canManageFloat && (
+                  <Button size="sm" variant="outline" className="flex-1" aria-label="Top up this float" onClick={() => openTopUp(f.id)}>
+                    <ArrowUpCircle className="h-3 w-3" /> Top Up
+                  </Button>
+                )}
               </div>
             </motion.div>
           );

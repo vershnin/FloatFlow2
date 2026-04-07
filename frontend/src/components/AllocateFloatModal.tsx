@@ -62,11 +62,8 @@ export function AllocateFloatModal({ open, onClose, mode, floatId }: AllocateFlo
       }
       onClose();
     } catch (error: any) {
-    
       const msg = error?.response?.data?.message;
-      if (!msg) {
-        toast.error(mode === "allocate" ? "Failed to allocate float" : "Failed to top up float");
-      }
+      toast.error(msg || (mode === "allocate" ? "Failed to allocate float" : "Failed to top up float"));
     } finally {
       setIsSubmitting(false);
     }
