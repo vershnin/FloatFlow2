@@ -139,6 +139,19 @@ public class FloatService {
             .collect(Collectors.toList());
     }
 
+    public FloatResponse getActiveFloatForMyBranch(User user) {
+        if (user.getBranch() == null) {
+            throw new BadRequestException("User is not assigned to any branch");
+        }
+
+        com.floatflow.entity.Float activeFloat = floatRepository
+            .findByBranchIdAndStatus(user.getBranch().getId(), FloatStatus.ACTIVE)
+            .orElseThrow(() -> new ResourceNotFoundException(
+                "Active float not found for branch: " + user.getBranch().getId()));
+
+        return toResponse(activeFloat);
+    }
+
     public com.floatflow.entity.Float findActiveFloat(Long floatId) {
         return floatRepository.findById(floatId)
             .filter(f -> f.getStatus() == FloatStatus.ACTIVE)

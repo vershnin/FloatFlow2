@@ -69,6 +69,8 @@ public class SecurityConfig {
                 ).permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/floats")
                     .hasAnyRole("ADMIN", "FINANCE_OFFICER", "BRANCH_MANAGER")
+                .requestMatchers(HttpMethod.GET, "/api/floats/active/my-branch")
+                    .hasAnyRole("ADMIN", "FINANCE_OFFICER", "BRANCH_MANAGER", "EMPLOYEE")
                 .requestMatchers(HttpMethod.POST, "/api/floats")
                     .hasAnyRole("ADMIN", "FINANCE_OFFICER")
                 .requestMatchers(HttpMethod.PUT, "/api/floats/*/topup")
@@ -166,11 +168,12 @@ public class SecurityConfig {
         return args -> {
             log.info("Security matcher order [1]: POST /api/auth/login, /api/auth/register -> permitAll");
             log.info("Security matcher order [2]: GET /api/floats -> ADMIN, FINANCE_OFFICER, BRANCH_MANAGER");
-            log.info("Security matcher order [3]: GET /api/expenses -> ADMIN, FINANCE_OFFICER");
-            log.info("Security matcher order [4]: GET /api/expenses/my -> ADMIN, FINANCE_OFFICER, BRANCH_MANAGER, EMPLOYEE, AUDITOR");
-            log.info("Security matcher order [5]: GET /api/audit, /api/audit/** -> ADMIN, AUDITOR");
-            log.info("Security matcher order [6]: /api/admin/** -> ADMIN");
-            log.info("Security matcher order [7]: /api/** -> authenticated catch-all");
+            log.info("Security matcher order [3]: GET /api/floats/active/my-branch -> ADMIN, FINANCE_OFFICER, BRANCH_MANAGER, EMPLOYEE");
+            log.info("Security matcher order [4]: GET /api/expenses -> ADMIN, FINANCE_OFFICER");
+            log.info("Security matcher order [5]: GET /api/expenses/my -> ADMIN, FINANCE_OFFICER, BRANCH_MANAGER, EMPLOYEE, AUDITOR");
+            log.info("Security matcher order [6]: GET /api/audit, /api/audit/** -> ADMIN, AUDITOR");
+            log.info("Security matcher order [7]: /api/admin/** -> ADMIN");
+            log.info("Security matcher order [8]: /api/** -> authenticated catch-all");
         };
     }
 }

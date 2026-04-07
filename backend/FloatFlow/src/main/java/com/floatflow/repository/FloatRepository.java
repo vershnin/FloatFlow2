@@ -18,6 +18,7 @@ public interface FloatRepository extends JpaRepository<Float, Long> {
     @EntityGraph(attributePaths = {"branch", "createdBy"})
     List<Float> findByBranchId(Long branchId);
 
+    @EntityGraph(attributePaths = {"branch", "createdBy"})
     Optional<Float> findByBranchIdAndStatus(Long branchId, FloatStatus status);
 
     @EntityGraph(attributePaths = {"branch", "createdBy"})

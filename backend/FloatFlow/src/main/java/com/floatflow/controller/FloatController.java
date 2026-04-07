@@ -53,6 +53,16 @@ public class FloatController {
         return ResponseEntity.ok(ApiResponse.success("Floats retrieved", floatService.getAllFloats(currentUser)));
     }
 
+    @GetMapping("/active/my-branch")
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'BRANCH_MANAGER', 'FINANCE_OFFICER', 'ADMIN')")
+    @Operation(summary = "Get active float for the authenticated user's branch")
+    public ResponseEntity<ApiResponse<FloatResponse>> getMyBranchActiveFloat(
+            @AuthenticationPrincipal User currentUser
+    ) {
+        FloatResponse response = floatService.getActiveFloatForMyBranch(currentUser);
+        return ResponseEntity.ok(ApiResponse.success("Active float retrieved", response));
+    }
+
     @PutMapping("/{id}/topup")
     @PreAuthorize("hasAnyRole('FINANCE_OFFICER', 'ADMIN', 'BRANCH_MANAGER')")
     @Operation(summary = "Top up a float balance")
