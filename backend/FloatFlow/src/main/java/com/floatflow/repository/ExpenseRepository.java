@@ -44,7 +44,7 @@ public interface ExpenseRepository extends JpaRepository<Expense, Long> {
            "AND e.amount = :amount " +
            "AND e.category = :category " +
            "AND e.createdAt >= :since " +
-           "AND e.status != 'WITHDRAWN'")
+           "AND e.status NOT IN ('WITHDRAWN', 'DRAFT')")
     boolean existsDuplicate(
         @Param("userId") Long userId,
         @Param("amount") BigDecimal amount,
