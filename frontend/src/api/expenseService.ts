@@ -131,6 +131,30 @@ export const getPendingExpenses = async (params?: {
   return data?.content ?? [];
 };
 
+export const getBranchExpenses = async (params?: {
+  page?: number;
+  size?: number;
+  dateFrom?: string;
+  dateTo?: string;
+}): Promise<ExpenseResponse[]> => {
+  const queryParams = new URLSearchParams();
+  if (params?.page !== undefined) queryParams.append('page', params.page.toString());
+  if (params?.size !== undefined) queryParams.append('size', params.size.toString());
+  if (params?.dateFrom) queryParams.append('dateFrom', params.dateFrom);
+  if (params?.dateTo) queryParams.append('dateTo', params.dateTo);
+
+  const queryString = queryParams.toString();
+  const url = queryString ? `/expenses/branch?${queryString}` : '/expenses/branch';
+  const res = await apiClient.get(url);
+  const data = res.data.data;
+
+  if (Array.isArray(data)) {
+    return data;
+  }
+
+  return data?.content ?? [];
+};
+
 export const submitExpense = async (
   data: SubmitExpenseRequest
 ): Promise<ExpenseResponse> => {

@@ -4,6 +4,8 @@ import {
 } from "lucide-react";
 import {
   getPendingExpenses,
+  getBranchExpenses,
+  getExpenses,
   approveExpense,
   rejectExpense,
   type ExpenseResponse,
@@ -32,7 +34,11 @@ export default function ApprovalsPage() {
   const loadExpenses = async () => {
     setLoading(true);
     try {
-      const data = await getPendingExpenses();
+      const data = user?.role === "BRANCH_MANAGER"
+        ? await getBranchExpenses()
+        : user?.role === "FINANCE_OFFICER" || user?.role === "ADMIN"
+          ? await getExpenses()
+          : await getPendingExpenses();
       setExpenses(data);
     } finally {
       setLoading(false);
@@ -41,7 +47,7 @@ export default function ApprovalsPage() {
 
   useEffect(() => {
     loadExpenses();
-  }, []);
+  }, [user?.role]);
 
   const handleAction = async (id: number, action: "APPROVED" | "REJECTED") => {
     setActionLoading(true);
@@ -62,11 +68,12 @@ export default function ApprovalsPage() {
     }
   };
 
-  // Filter locally — backend already returns only PENDING from /expenses/pending.
-  // The filter tabs let managers review history of approved/rejected from the same load.
-  const filtered = expenses.filter((e) =>
-    statusFilter === "all" ? true : e.status === statusFilter
-  );
+  // Treat "APPROVED" tab as "processed" (APPROVED + REJECTED) while preserving row status badges.
+  const filtered = expenses.filter((e) => {
+    if (statusFilter === "all") return true;
+    if (statusFilter === "APPROVED") return e.status === "APPROVED" || e.status === "REJECTED";
+    return e.status === statusFilter;
+  });
 
   if (loading) {
     return (

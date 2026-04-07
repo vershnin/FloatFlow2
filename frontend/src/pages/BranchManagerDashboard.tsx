@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Wallet, Receipt, Clock, TrendingUp } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { getFloats, type FloatResponse } from "@/api/floatService";
-import { getExpenses, type ExpenseResponse } from "@/api/expenseService";
+import { getExpenses, getBranchExpenses, type ExpenseResponse } from "@/api/expenseService";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
@@ -24,9 +24,10 @@ export default function BranchManagerDashboard() {
   useEffect(() => {
     const load = async () => {
       try {
+        const isBranchManager = user?.role === "BRANCH_MANAGER";
         const [floatData, expenseData] = await Promise.all([
           getFloats(),
-          getExpenses({ size: 50 }),
+          isBranchManager ? getBranchExpenses({ size: 50 }) : getExpenses({ size: 50 }),
         ]);
         setFloats(floatData);
         setExpenses(expenseData);
@@ -37,7 +38,7 @@ export default function BranchManagerDashboard() {
       }
     };
     load();
-  }, []);
+  }, [user?.role]);
 
   const activeFloat = floats.find((f) => f.status === "ACTIVE");
   const pendingExpenses = expenses.filter((e) => e.status === "PENDING");
