@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { Search, Plus } from "lucide-react";
-import { getExpenses, getMyExpenses, submitDraftExpense, type ExpenseResponse } from "@/api/expenseService";
+import { getExpenses, getMyExpenses, getBranchExpenses, submitDraftExpense, type ExpenseResponse } from "@/api/expenseService";
 import { useAuth } from "@/context/AuthContext";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -31,11 +31,16 @@ export default function ExpensesPage() {
 
   const canSeeAll = user?.role === "FINANCE_OFFICER" ||
                     user?.role === "ADMIN";
+  const canSeeBranch = user?.role === "BRANCH_MANAGER";
 
   const loadExpenses = async () => {
     setLoading(true);
     try {
-      const data = canSeeAll ? await getExpenses() : await getMyExpenses();
+      const data = canSeeAll
+        ? await getExpenses()
+        : canSeeBranch
+          ? await getBranchExpenses()
+          : await getMyExpenses();
       setExpenses(data);
     } finally {
       setLoading(false);
@@ -78,7 +83,7 @@ export default function ExpensesPage() {
     <div>
       <PageHeader
         title="Expenses"
-        description={canSeeAll ? "All branch expenses" : "Your submitted expenses"}
+        description={canSeeAll ? "All branch expenses" : canSeeBranch ? "Your branch expenses" : "Your submitted expenses"}
       >
         <Button onClick={() => setModalOpen(true)}>
           <Plus className="h-4 w-4" /> Submit Expense
