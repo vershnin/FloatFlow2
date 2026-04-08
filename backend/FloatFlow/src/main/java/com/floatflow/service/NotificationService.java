@@ -63,13 +63,14 @@ public class NotificationService {
      */
     @Transactional
     public void notifyBranchManagers(Long branchId, String type, String title, String message, String link) {
-        List<User> managers = userRepository.findAll().stream()
-                .filter(u -> u.getRole() == Role.BRANCH_MANAGER
-                        && u.getBranch() != null
-                        && u.getBranch().getId().equals(branchId))
-                .toList();
+        List<User> managers = getBranchManagers(branchId);
 
         managers.forEach(manager -> notifyUser(manager.getId(), type, title, message, link));
+    }
+
+    @Transactional(readOnly = true)
+    public List<User> getBranchManagers(Long branchId) {
+        return userRepository.findByRoleAndBranchId(Role.BRANCH_MANAGER, branchId);
     }
 
     public List<Notification> getMyNotifications(Long userId) {
