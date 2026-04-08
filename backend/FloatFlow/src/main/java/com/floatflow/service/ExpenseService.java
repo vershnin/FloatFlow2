@@ -29,6 +29,7 @@ public class ExpenseService {
     private final FloatService floatService;
     private final PolicyEngine policyEngine;
     private final NotificationService notificationService;
+    private final EmailService emailService;
     private final AuditService auditService;
 
     @Transactional
@@ -103,6 +104,16 @@ public class ExpenseService {
                 "New expense submitted by " + submittedBy.getName() + " — KES " + expense.getAmount(),
                 "/approvals"
         );
+
+        try {
+            emailService.sendExpenseSubmittedEmail(
+                    expense,
+                    submittedBy,
+                    notificationService.getBranchManagers(submittedBy.getBranch().getId())
+            );
+        } catch (Exception exception) {
+            log.warn("Unable to dispatch submission email for expense {}", expense.getId(), exception);
+        }
     }
 
     @Transactional
@@ -158,6 +169,12 @@ public class ExpenseService {
                 "/expenses"
         );
 
+        try {
+            emailService.sendExpenseDecisionEmail(expense, approver, "APPROVED", request.getComment());
+        } catch (Exception exception) {
+            log.warn("Unable to dispatch approval email for expense {}", expenseId, exception);
+        }
+
         return toResponse(expense);
     }
 
@@ -181,6 +198,12 @@ public class ExpenseService {
                 "Your expense of KES " + expense.getAmount() + " was rejected. Reason: " + request.getComment(),
                 "/expenses"
         );
+
+        try {
+            emailService.sendExpenseDecisionEmail(expense, approver, "REJECTED", request.getComment());
+        } catch (Exception exception) {
+            log.warn("Unable to dispatch rejection email for expense {}", expenseId, exception);
+        }
 
         return toResponse(expense);
     }

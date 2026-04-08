@@ -1,6 +1,7 @@
 package com.floatflow.repository;
 
 import com.floatflow.entity.User;
+import com.floatflow.entity.Role;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -24,4 +25,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     Optional<User> findByEmail(String email);
     boolean existsByEmail(String email);
+
+    @EntityGraph(attributePaths = {"branch"})
+    @Query("SELECT u FROM User u WHERE u.role = :role AND u.branch.id = :branchId")
+    List<User> findByRoleAndBranchId(Role role, Long branchId);
 }
