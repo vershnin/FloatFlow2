@@ -21,6 +21,7 @@ import { useAuth } from "@/context/AuthContext";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { sendPendingApprovalReminderEmails } from "@/api/emailService";
 
 export default function ApprovalsPage() {
   const { user } = useAuth();
@@ -68,6 +69,33 @@ export default function ApprovalsPage() {
     }
   };
 
+  const handleSendPendingReminders = async () => {
+    const pendingExpenses = expenses.filter((e) => e.status === "PENDING");
+    if (!pendingExpenses.length) {
+      toast.error("No pending approvals to remind");
+      return;
+    }
+    if (!user?.email || !user?.name) {
+      toast.error("Missing reviewer profile details for email reminders");
+      return;
+    }
+
+    try {
+      const result = await sendPendingApprovalReminderEmails(
+        pendingExpenses,
+        user.name,
+        user.email
+      );
+      if (result.delivered) {
+        toast.success(result.message);
+      } else {
+        toast.message(result.message);
+      }
+    } catch {
+      toast.error("Failed to send pending approval reminder emails");
+    }
+  };
+
   // Treat "APPROVED" tab as "processed" (APPROVED + REJECTED) while preserving row status badges.
   const filtered = expenses.filter((e) => {
     if (statusFilter === "all") return true;
@@ -109,6 +137,14 @@ export default function ApprovalsPage() {
             )
           </Button>
         ))}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => void handleSendPendingReminders()}
+          aria-label="Send pending approval reminder emails"
+        >
+          Send Pending Reminders
+        </Button>
       </div>
 
       {/* Expense cards */}
