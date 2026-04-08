@@ -34,6 +34,18 @@ spring:
         order_updates: true
     open-in-view: false
 
+  mail:
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:1025}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: ${MAIL_SMTP_AUTH:false}
+          starttls:
+            enable: ${MAIL_STARTTLS:false}
+
 jwt:
   secret: ZmxvYXRmbG93c3VwZXJzZWNyZXRqd3RrZXlmb3JIUzI1NmFsZ29yaXRobWF0bGVhc3QzMmJ5dGVzbG9uZzEyMzQ=
   expiration: 86400000
@@ -51,3 +63,8 @@ logging:
     com.floatflow: DEBUG
     org.springframework.security: INFO
     org.hibernate.SQL: INFO
+
+floatflow:
+  mail:
+    enabled: ${FLOATFLOW_MAIL_ENABLED:false}
+    from: ${FLOATFLOW_MAIL_FROM:no-reply@floatflow.local}
