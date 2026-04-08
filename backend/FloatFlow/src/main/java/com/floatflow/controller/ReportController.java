@@ -6,6 +6,8 @@ import com.floatflow.service.ReportingService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -38,5 +40,39 @@ public class ReportController {
         return ResponseEntity.ok(
             ApiResponse.success("Branch report generated", reportingService.getBranchReport(id))
         );
+    }
+
+    @GetMapping(value = "/summary/export/csv", produces = "text/csv")
+    @PreAuthorize("hasAnyRole('FINANCE_OFFICER', 'ADMIN', 'AUDITOR')")
+    @Operation(summary = "Download the summary report as CSV")
+    public ResponseEntity<byte[]> exportSummaryCsv(
+            @RequestParam(required = false) Long selectedBranchId
+    ) {
+        return buildFileResponse(
+                reportingService.exportSummaryCsv(selectedBranchId),
+                "floatflow-reports.csv",
+                "text/csv"
+        );
+    }
+
+    @GetMapping(value = "/summary/export/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
+    @PreAuthorize("hasAnyRole('FINANCE_OFFICER', 'ADMIN', 'AUDITOR')")
+    @Operation(summary = "Download the summary report as PDF")
+    public ResponseEntity<byte[]> exportSummaryPdf(
+            @RequestParam(required = false) Long selectedBranchId
+    ) {
+        return buildFileResponse(
+                reportingService.exportSummaryPdf(selectedBranchId),
+                "floatflow-reports.pdf",
+                MediaType.APPLICATION_PDF_VALUE
+        );
+    }
+
+    private ResponseEntity<byte[]> buildFileResponse(byte[] content, String fileName, String contentType) {
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + fileName)
+                .contentType(MediaType.parseMediaType(contentType))
+                .contentLength(content.length)
+                .body(content);
     }
 }
