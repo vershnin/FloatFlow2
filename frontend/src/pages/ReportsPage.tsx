@@ -1,9 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
-import { getBranchReport, getSummaryReport, type BranchReport } from "@/api/reportService";
+import {
+  downloadSummaryReportCsv,
+  downloadSummaryReportPdf,
+  getBranchReport,
+  getSummaryReport,
+  type BranchReport,
+} from "@/api/reportService";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2 } from "lucide-react";
+import { Download, FileText, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
@@ -76,6 +82,30 @@ export default function ReportsPage() {
     );
   }, [summaryData]);
 
+  const handleCsvExport = () => {
+    if (summaryData.length === 0) {
+      toast.error("No report data to export");
+      return;
+    }
+    void downloadSummaryReportCsv(branchReport?.branchId)
+      .then(() => toast.success("CSV export started"))
+      .catch((err: any) => {
+        toast.error(err?.response?.data?.message || "Failed to export CSV report");
+      });
+  };
+
+  const handlePdfExport = () => {
+    if (summaryData.length === 0) {
+      toast.error("No report data to export");
+      return;
+    }
+    void downloadSummaryReportPdf(branchReport?.branchId)
+      .then(() => toast.success("PDF export started"))
+      .catch((err: any) => {
+        toast.error(err?.response?.data?.message || "Failed to export PDF report");
+      });
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -99,14 +129,22 @@ export default function ReportsPage() {
   return (
     <div>
       <PageHeader title="Reports" description="Branch-level float allocation and approval totals">
-        <Select value={selectedBranchId} onValueChange={setSelectedBranchId}>
-          <SelectTrigger className="w-56"><SelectValue placeholder="Select branch" /></SelectTrigger>
-          <SelectContent>
-            {summaryData.map((branch) => (
-              <SelectItem key={branch.branchId} value={String(branch.branchId)}>{branch.branchName}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex flex-wrap items-center gap-2">
+          <Select value={selectedBranchId} onValueChange={setSelectedBranchId}>
+            <SelectTrigger className="w-56"><SelectValue placeholder="Select branch" /></SelectTrigger>
+            <SelectContent>
+              {summaryData.map((branch) => (
+                <SelectItem key={branch.branchId} value={String(branch.branchId)}>{branch.branchName}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button variant="outline" onClick={handleCsvExport}>
+            <Download className="h-4 w-4" /> Export CSV
+          </Button>
+          <Button variant="outline" onClick={handlePdfExport}>
+            <FileText className="h-4 w-4" /> Export PDF
+          </Button>
+        </div>
       </PageHeader>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
