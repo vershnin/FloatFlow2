@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  downloadSummaryReportCsv,
+  downloadSummaryReportExcel,
   downloadSummaryReportPdf,
   getBranchReport,
   getSummaryReport,
@@ -82,15 +82,15 @@ export default function ReportsPage() {
     );
   }, [summaryData]);
 
-  const handleCsvExport = () => {
+  const handleExcelExport = () => {
     if (summaryData.length === 0) {
       toast.error("No report data to export");
       return;
     }
-    void downloadSummaryReportCsv(branchReport?.branchId)
-      .then(() => toast.success("CSV export started"))
+    void downloadSummaryReportExcel(branchReport?.branchId)
+      .then(() => toast.success("Excel export started"))
       .catch((err: any) => {
-        toast.error(err?.response?.data?.message || "Failed to export CSV report");
+        toast.error(err?.response?.data?.message || "Failed to export Excel report");
       });
   };
 
@@ -138,8 +138,8 @@ export default function ReportsPage() {
               ))}
             </SelectContent>
           </Select>
-          <Button variant="outline" onClick={handleCsvExport}>
-            <Download className="h-4 w-4" /> Export CSV
+          <Button variant="outline" onClick={handleExcelExport}>
+            <Download className="h-4 w-4" /> Export Excel
           </Button>
           <Button variant="outline" onClick={handlePdfExport}>
             <FileText className="h-4 w-4" /> Export PDF
