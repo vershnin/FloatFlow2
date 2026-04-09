@@ -68,3 +68,6 @@ floatflow:
   mail:
     enabled: ${FLOATFLOW_MAIL_ENABLED:false}
     from: ${FLOATFLOW_MAIL_FROM:no-reply@floatflow.local}
+  report:
+    company-name: ${FLOATFLOW_COMPANY_NAME:FloatFlow}
+    currency: ${FLOATFLOW_CURRENCY:KES}
