@@ -37,20 +37,16 @@ function triggerDownload(blob: Blob, fileName: string) {
   window.URL.revokeObjectURL(url);
 }
 
-export const downloadSummaryReportCsv = async (selectedBranchId?: number): Promise<void> => {
-  const query = selectedBranchId ? `?selectedBranchId=${selectedBranchId}` : "";
-  const res = await apiClient.get(`/reports/summary/export/csv${query}`, {
-    responseType: "blob",
-  });
-  const fileName = getFileNameFromDisposition(res.headers["content-disposition"], "floatflow-reports.csv");
+export const downloadSummaryReportExcel = async (branchId?: number): Promise<void> => {
+  const url = branchId ? `/reports/branch/${branchId}/export/excel` : "/reports/export/excel";
+  const res = await apiClient.get(url, { responseType: "blob" });
+  const fileName = getFileNameFromDisposition(res.headers["content-disposition"], "floatflow-summary-report.xlsx");
   triggerDownload(res.data, fileName);
 };
 
-export const downloadSummaryReportPdf = async (selectedBranchId?: number): Promise<void> => {
-  const query = selectedBranchId ? `?selectedBranchId=${selectedBranchId}` : "";
-  const res = await apiClient.get(`/reports/summary/export/pdf${query}`, {
-    responseType: "blob",
-  });
-  const fileName = getFileNameFromDisposition(res.headers["content-disposition"], "floatflow-reports.pdf");
+export const downloadSummaryReportPdf = async (branchId?: number): Promise<void> => {
+  const url = branchId ? `/reports/branch/${branchId}/export/pdf` : "/reports/export/pdf";
+  const res = await apiClient.get(url, { responseType: "blob" });
+  const fileName = getFileNameFromDisposition(res.headers["content-disposition"], "floatflow-summary-report.pdf");
   triggerDownload(res.data, fileName);
 };
