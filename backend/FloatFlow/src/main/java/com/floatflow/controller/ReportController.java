@@ -2,6 +2,7 @@ package com.floatflow.controller;
 
 import com.floatflow.dto.response.ApiResponse;
 import com.floatflow.dto.response.BranchReportResponse;
+import com.floatflow.service.ReportExportService;
 import com.floatflow.service.ReportingService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -23,6 +24,7 @@ import java.util.List;
 public class ReportController {
 
     private final ReportingService reportingService;
+    private final ReportExportService reportExportService;
 
     @GetMapping("/summary")
     @PreAuthorize("hasAnyRole('FINANCE_OFFICER', 'ADMIN', 'AUDITOR')")
@@ -42,29 +44,49 @@ public class ReportController {
         );
     }
 
-    @GetMapping(value = "/summary/export/csv", produces = "text/csv")
+    // ── Export endpoints ───────────────────────────────────────────────────────
+
+    @GetMapping(value = "/export/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
     @PreAuthorize("hasAnyRole('FINANCE_OFFICER', 'ADMIN', 'AUDITOR')")
-    @Operation(summary = "Download the summary report as CSV")
-    public ResponseEntity<byte[]> exportSummaryCsv(
-            @RequestParam(required = false) Long selectedBranchId
-    ) {
+    @Operation(summary = "Download full summary report as a branded PDF")
+    public ResponseEntity<byte[]> exportSummaryPdf() {
         return buildFileResponse(
-                reportingService.exportSummaryCsv(selectedBranchId),
-                "floatflow-reports.csv",
-                "text/csv"
+                reportExportService.generateSummaryPdf(),
+                "floatflow-summary-report.pdf",
+                MediaType.APPLICATION_PDF_VALUE
         );
     }
 
-    @GetMapping(value = "/summary/export/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
+    @GetMapping("/export/excel")
     @PreAuthorize("hasAnyRole('FINANCE_OFFICER', 'ADMIN', 'AUDITOR')")
-    @Operation(summary = "Download the summary report as PDF")
-    public ResponseEntity<byte[]> exportSummaryPdf(
-            @RequestParam(required = false) Long selectedBranchId
-    ) {
+    @Operation(summary = "Download full summary report as a branded Excel workbook")
+    public ResponseEntity<byte[]> exportSummaryExcel() {
         return buildFileResponse(
-                reportingService.exportSummaryPdf(selectedBranchId),
-                "floatflow-reports.pdf",
+                reportExportService.generateSummaryExcel(),
+                "floatflow-summary-report.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        );
+    }
+
+    @GetMapping(value = "/branch/{id}/export/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
+    @PreAuthorize("hasAnyRole('FINANCE_OFFICER', 'ADMIN', 'AUDITOR')")
+    @Operation(summary = "Download a single branch report as a branded PDF")
+    public ResponseEntity<byte[]> exportBranchPdf(@PathVariable Long id) {
+        return buildFileResponse(
+                reportExportService.generateBranchPdf(id),
+                "floatflow-branch-" + id + "-report.pdf",
                 MediaType.APPLICATION_PDF_VALUE
+        );
+    }
+
+    @GetMapping("/branch/{id}/export/excel")
+    @PreAuthorize("hasAnyRole('FINANCE_OFFICER', 'ADMIN', 'AUDITOR')")
+    @Operation(summary = "Download a single branch report as a branded Excel workbook")
+    public ResponseEntity<byte[]> exportBranchExcel(@PathVariable Long id) {
+        return buildFileResponse(
+                reportExportService.generateBranchExcel(id),
+                "floatflow-branch-" + id + "-report.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         );
     }
 
