@@ -16,10 +16,19 @@ export default function ForgotPasswordPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    await requestPasswordReset(email);
-    setSent(true);
-    setIsLoading(false);
-    toast.success("Reset link sent!");
+    try {
+      await requestPasswordReset(email);
+      setSent(true);
+      toast.success("Reset link sent!");
+    } catch (error: any) {
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Unable to send reset link";
+      toast.error(message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

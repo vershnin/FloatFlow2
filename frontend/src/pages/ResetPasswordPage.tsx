@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,6 +9,9 @@ import { Wallet, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 
 export default function ResetPasswordPage() {
+  const { resetPassword } = useAuth();
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get("token") ?? "";
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -22,12 +27,24 @@ export default function ResetPasswordPage() {
       toast.error("Passwords do not match");
       return;
     }
+    if (!token) {
+      toast.error("Reset link is invalid or missing token");
+      return;
+    }
     setIsLoading(true);
-    // Password reset requires a backend endpoint — not yet implemented
-    await new Promise((r) => setTimeout(r, 600));
-    setDone(true);
-    setIsLoading(false);
-    toast.success("Password updated!");
+    try {
+      await resetPassword(token, password);
+      setDone(true);
+      toast.success("Password updated!");
+    } catch (error: any) {
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Unable to reset password";
+      toast.error(message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
