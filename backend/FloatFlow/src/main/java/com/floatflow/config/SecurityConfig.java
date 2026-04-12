@@ -59,7 +59,9 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.POST,
                     "/api/auth/login",
-                    "/api/auth/register"
+                    "/api/auth/register",
+                    "/api/auth/forgot-password",
+                    "/api/auth/reset-password"
                 ).permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/branches")
                     .permitAll()
@@ -168,7 +170,7 @@ public class SecurityConfig {
     @Bean
     public ApplicationRunner securityMatcherOrderLogger() {
         return args -> {
-            log.info("Security matcher order [1]: POST /api/auth/login, /api/auth/register -> permitAll");
+            log.info("Security matcher order [1]: POST /api/auth/login, /api/auth/register, /api/auth/forgot-password, /api/auth/reset-password -> permitAll");
             log.info("Security matcher order [2]: GET /api/floats -> ADMIN, FINANCE_OFFICER, BRANCH_MANAGER");
             log.info("Security matcher order [3]: GET /api/floats/active/my-branch -> ADMIN, FINANCE_OFFICER, BRANCH_MANAGER, EMPLOYEE");
             log.info("Security matcher order [4]: GET /api/expenses -> ADMIN, FINANCE_OFFICER");
