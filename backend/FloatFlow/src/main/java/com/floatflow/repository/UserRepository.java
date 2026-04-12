@@ -24,7 +24,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findById(Long id);
 
     Optional<User> findByEmail(String email);
+    Optional<User> findByEmailIgnoreCase(String email);
     boolean existsByEmail(String email);
+    Optional<User> findByPasswordResetToken(String passwordResetToken);
 
     @EntityGraph(attributePaths = {"branch"})
     @Query("SELECT u FROM User u WHERE u.role = :role AND u.branch.id = :branchId")
