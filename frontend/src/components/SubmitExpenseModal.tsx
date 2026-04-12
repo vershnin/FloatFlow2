@@ -13,11 +13,7 @@ import { toast } from "sonner";
 import axios from "axios";
 import { sanitizeText, SecureStorage } from "@/lib/security";
 import { useAuth } from "@/context/AuthContext";
-
-const EXPENSE_CATEGORIES = [
-  "Office Supplies", "Transport", "Meals & Entertainment", "Repairs & Maintenance",
-  "Cleaning Services", "Courier & Postage", "Stationery", "Utilities", "Miscellaneous",
-];
+import { EXPENSE_CATEGORIES } from "@/lib/expenseCategories";
 
 interface SubmitExpenseModalProps {
   open: boolean;
