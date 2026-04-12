@@ -4,7 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { createPolicy, updatePolicy, type PolicyResponse } from "@/api/policyService";
+import { EXPENSE_CATEGORIES } from "@/lib/expenseCategories";
 import { toast } from "sonner";
 
 interface PolicyModalProps {
@@ -85,7 +87,16 @@ export function PolicyModal({ open, onClose, policy, onSuccess }: PolicyModalPro
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Category *</Label>
-              <Input placeholder="e.g. Transport" value={category} onChange={(e) => setCategory(e.target.value)} required />
+              <Select value={category} onValueChange={setCategory}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {EXPENSE_CATEGORIES.map((item) => (
+                    <SelectItem key={item} value={item}>{item}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label>Max Amount (KES) *</Label>
