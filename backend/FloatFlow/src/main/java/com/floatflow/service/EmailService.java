@@ -3,6 +3,7 @@ package com.floatflow.service;
 import com.floatflow.dto.request.ExpenseDecisionEmailRequest;
 import com.floatflow.dto.request.PendingApprovalReminderRequest;
 import com.floatflow.dto.response.EmailDispatchResponse;
+import com.floatflow.dto.response.SmtpHealthResponse;
 import com.floatflow.entity.Expense;
 import com.floatflow.entity.User;
 import lombok.RequiredArgsConstructor;
@@ -11,6 +12,7 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.stereotype.Service;
 
 import java.util.LinkedHashSet;
@@ -29,6 +31,12 @@ public class EmailService {
 
     @Value("${floatflow.mail.from:no-reply@floatflow.local}")
     private String fromAddress;
+
+    @Value("${spring.mail.host:localhost}")
+    private String mailHost;
+
+    @Value("${spring.mail.port:25}")
+    private int mailPort;
 
     public EmailDispatchResponse sendExpenseSubmittedEmail(Expense expense, User submittedBy, List<User> recipients) {
         Set<String> recipientEmails = recipients.stream()
@@ -125,6 +133,54 @@ public class EmailService {
         );
 
         return sendEmail(Set.of(user.getEmail()), subject, body, "password reset");
+    }
+
+    public SmtpHealthResponse checkSmtpHealth() {
+        JavaMailSender mailSender = mailSenderProvider.getIfAvailable();
+
+        if (!mailEnabled) {
+            return SmtpHealthResponse.builder()
+                    .healthy(false)
+                    .mailEnabled(false)
+                    .host(mailHost)
+                    .port(mailPort)
+                    .fromAddress(fromAddress)
+                    .message("SMTP health check failed: FloatFlow mail delivery is disabled")
+                    .build();
+        }
+
+        if (!(mailSender instanceof JavaMailSenderImpl mailSenderImpl)) {
+            return SmtpHealthResponse.builder()
+                    .healthy(false)
+                    .mailEnabled(true)
+                    .host(mailHost)
+                    .port(mailPort)
+                    .fromAddress(fromAddress)
+                    .message("SMTP health check unavailable: JavaMailSender implementation does not support connection testing")
+                    .build();
+        }
+
+        try {
+            mailSenderImpl.testConnection();
+            return SmtpHealthResponse.builder()
+                    .healthy(true)
+                    .mailEnabled(true)
+                    .host(mailHost)
+                    .port(mailPort)
+                    .fromAddress(fromAddress)
+                    .message("SMTP connection verified successfully")
+                    .build();
+        } catch (Exception exception) {
+            log.warn("SMTP connectivity check failed for {}:{}", mailHost, mailPort, exception);
+            return SmtpHealthResponse.builder()
+                    .healthy(false)
+                    .mailEnabled(true)
+                    .host(mailHost)
+                    .port(mailPort)
+                    .fromAddress(fromAddress)
+                    .message("SMTP connection failed: " + exception.getMessage())
+                    .build();
+        }
     }
 
     private EmailDispatchResponse sendEmail(Set<String> recipients, String subject, String body, String emailType) {
