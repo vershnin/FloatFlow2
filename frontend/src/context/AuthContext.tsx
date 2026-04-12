@@ -28,6 +28,8 @@ interface AuthContextType {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string, role: UserRole, branchId?: number) => Promise<void>;
+  requestPasswordReset: (email: string) => Promise<void>;
+  resetPassword: (token: string, newPassword: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -149,9 +151,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     clearMonitoringUser();
   }, []);
 
+  const requestPasswordReset = useCallback(async (email: string) => {
+    if (!isValidEmail(email)) {
+      throw new Error("Invalid email format");
+    }
+
+    await apiClient.post("/auth/forgot-password", {
+      email: sanitizeText(email),
+    });
+  }, []);
+
+  const resetPassword = useCallback(async (token: string, newPassword: string) => {
+    if (!token || token.trim().length === 0) {
+      throw new Error("Reset token is missing");
+    }
+    if (newPassword.length < 8) {
+      throw new Error("Password must be at least 8 characters");
+    }
+
+    await apiClient.post("/auth/reset-password", {
+      token: sanitizeText(token),
+      newPassword: sanitizeText(newPassword),
+    });
+  }, []);
+
   return (
     <AuthContext.Provider
-      value={{ user, isAuthenticated: !!user, isLoading, login, register, logout }}
+      value={{
+        user,
+        isAuthenticated: !!user,
+        isLoading,
+        login,
+        register,
+        requestPasswordReset,
+        resetPassword,
+        logout,
+      }}
     >
       {children}
     </AuthContext.Provider>
