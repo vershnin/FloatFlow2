@@ -2,6 +2,8 @@ package com.floatflow.controller;
 
 import com.floatflow.dto.request.LoginRequest;
 import com.floatflow.dto.request.RegisterRequest;
+import com.floatflow.dto.request.ForgotPasswordRequest;
+import com.floatflow.dto.request.CompletePasswordResetRequest;
 import com.floatflow.dto.response.ApiResponse;
 import com.floatflow.dto.response.AuthResponse;
 import com.floatflow.entity.Branch;
@@ -55,6 +57,27 @@ public class AuthController {
     ) {
         AuthResponse response = authService.login(request);
         return ResponseEntity.ok(ApiResponse.success("Login successful", response));
+    }
+
+    @PostMapping("/forgot-password")
+    @Operation(summary = "Request a password reset link")
+    public ResponseEntity<ApiResponse<Void>> forgotPassword(
+        @Valid @RequestBody ForgotPasswordRequest request
+    ) {
+        authService.requestPasswordReset(request.getEmail());
+        return ResponseEntity.ok(ApiResponse.success(
+            "If the email is registered, a password reset link has been sent",
+            null
+        ));
+    }
+
+    @PostMapping("/reset-password")
+    @Operation(summary = "Reset password using a reset token")
+    public ResponseEntity<ApiResponse<Void>> resetPassword(
+        @Valid @RequestBody CompletePasswordResetRequest request
+    ) {
+        authService.completePasswordReset(request);
+        return ResponseEntity.ok(ApiResponse.success("Password reset successful", null));
     }
 
     @GetMapping("/roles")
