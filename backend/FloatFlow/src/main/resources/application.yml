@@ -66,8 +66,10 @@ logging:
 
 floatflow:
   mail:
-    enabled: ${FLOATFLOW_MAIL_ENABLED:false}
+    enabled: ${FLOATFLOW_MAIL_ENABLED:true}
     from: ${FLOATFLOW_MAIL_FROM:no-reply@floatflow.local}
+  auth:
+    reset-url-base: ${FLOATFLOW_RESET_URL_BASE:http://localhost:5173/reset-password}
   report:
     company-name: ${FLOATFLOW_COMPANY_NAME:FloatFlow}
     currency: ${FLOATFLOW_CURRENCY:KES}
