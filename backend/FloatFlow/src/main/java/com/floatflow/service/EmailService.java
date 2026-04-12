@@ -116,6 +116,17 @@ public class EmailService {
         return sendEmail(recipientEmails, "FloatFlow pending approval reminder", body.toString(), "pending approval reminder");
     }
 
+    public EmailDispatchResponse sendPasswordResetEmail(User user, String resetUrl) {
+        String subject = "Reset your FloatFlow password";
+        String body = String.format(
+                "Hi %s,%n%nWe received a request to reset your FloatFlow password.%n%nUse this link to set a new password:%n%s%n%nThis link expires in 60 minutes. If you did not request a password reset, you can ignore this email.",
+                user.getName(),
+                resetUrl
+        );
+
+        return sendEmail(Set.of(user.getEmail()), subject, body, "password reset");
+    }
+
     private EmailDispatchResponse sendEmail(Set<String> recipients, String subject, String body, String emailType) {
         if (recipients.isEmpty()) {
             return EmailDispatchResponse.builder()
