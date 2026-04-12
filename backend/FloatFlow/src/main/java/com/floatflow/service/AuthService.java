@@ -3,6 +3,7 @@ package com.floatflow.service;
 import com.floatflow.audit.AuditService;
 import com.floatflow.dto.request.LoginRequest;
 import com.floatflow.dto.request.RegisterRequest;
+import com.floatflow.dto.request.CompletePasswordResetRequest;
 import com.floatflow.dto.response.AuthResponse;
 import com.floatflow.entity.Branch;
 import com.floatflow.entity.User;
@@ -13,11 +14,15 @@ import com.floatflow.repository.UserRepository;
 import com.floatflow.security.JwtService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -30,6 +35,10 @@ public class AuthService {
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
     private final AuditService auditService;
+        private final EmailService emailService;
+
+        @Value("${floatflow.auth.reset-url-base:http://localhost:5173/reset-password}")
+        private String resetUrlBase;
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
@@ -83,6 +92,42 @@ public class AuthService {
         String token = jwtService.generateToken(user);
         return buildAuthResponse(user, token);
     }
+
+        @Transactional
+        public void requestPasswordReset(String email) {
+                userRepository.findByEmailIgnoreCase(email).ifPresent(user -> {
+                        String token = UUID.randomUUID().toString();
+                        user.setPasswordResetToken(token);
+                        user.setPasswordResetExpiresAt(LocalDateTime.now().plusHours(1));
+                        userRepository.save(user);
+
+                        String separator = resetUrlBase.contains("?") ? "&" : "?";
+                        String resetUrl = resetUrlBase + separator + "token=" + token;
+                        emailService.sendPasswordResetEmail(user, resetUrl);
+                        log.info("Password reset requested for user {}", user.getEmail());
+                });
+        }
+
+        @Transactional
+        public void completePasswordReset(CompletePasswordResetRequest request) {
+                User user = userRepository.findByPasswordResetToken(request.getToken())
+                                .orElseThrow(() -> new BadRequestException("Reset link is invalid or has expired"));
+
+                if (user.getPasswordResetExpiresAt() == null || user.getPasswordResetExpiresAt().isBefore(LocalDateTime.now())) {
+                        throw new BadRequestException("Reset link is invalid or has expired");
+                }
+
+                user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+                user.setPasswordResetToken(null);
+                user.setPasswordResetExpiresAt(null);
+                userRepository.save(user);
+
+                auditService.log(
+                                user.getId(), user.getName(), user.getEmail(),
+                                AuditService.ADMIN_PASSWORD_RESET, "User", user.getId(),
+                                "Password reset completed via forgot-password flow"
+                );
+        }
 
     private AuthResponse buildAuthResponse(User user, String token) {
         return AuthResponse.builder()
