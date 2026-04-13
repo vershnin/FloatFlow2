@@ -10,9 +10,9 @@ spring:
       enabled: true
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/floatflow_db
-    username: floatflow_user
-    password: floatflow_password
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/floatflow_db}
+    username: ${DB_USERNAME:floatflow_user}
+    password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 20
@@ -35,20 +35,20 @@ spring:
     open-in-view: false
 
   mail:
-    host: ${MAIL_HOST:localhost}
-    port: ${MAIL_PORT:1025}
-    username: ${MAIL_USERNAME:}
-    password: ${MAIL_PASSWORD:}
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
     properties:
       mail:
         smtp:
-          auth: ${MAIL_SMTP_AUTH:false}
+          auth: ${MAIL_SMTP_AUTH:true}
           starttls:
-            enable: ${MAIL_STARTTLS:false}
+            enable: ${MAIL_STARTTLS:true}
 
 jwt:
-  secret: ZmxvYXRmbG93c3VwZXJzZWNyZXRqd3RrZXlmb3JIUzI1NmFsZ29yaXRobWF0bGVhc3QzMmJ5dGVzbG9uZzEyMzQ=
-  expiration: 86400000
+  secret: ${JWT_SECRET}
+  expiration: ${JWT_EXPIRATION:86400000}
 
 springdoc:
   api-docs:
@@ -67,7 +67,7 @@ logging:
 floatflow:
   mail:
     enabled: ${FLOATFLOW_MAIL_ENABLED:true}
-    from: ${FLOATFLOW_MAIL_FROM:no-reply@floatflow.local}
+    from: ${FLOATFLOW_MAIL_FROM}
   auth:
     reset-url-base: ${FLOATFLOW_RESET_URL_BASE:http://localhost:5173/reset-password}
   report:
