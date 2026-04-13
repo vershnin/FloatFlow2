@@ -39,6 +39,11 @@ out/
 .DS_Store
 Thumbs.db
 
+# Environment secrets — never commit
+.env
+.env.local
+.env.*.local
+
 # Docker
 .docker/
 
