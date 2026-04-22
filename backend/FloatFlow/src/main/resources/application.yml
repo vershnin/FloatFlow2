@@ -2,6 +2,8 @@ server:
   port: 8080
 
 spring:
+  config:
+    import: optional:file:.env[.properties]
   application:
     name: FloatFlow
 
@@ -12,7 +14,7 @@ spring:
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/floatflow_db}
     username: ${DB_USERNAME:floatflow_user}
-    password: ${DB_PASSWORD}
+    password: ${DB_PASSWORD:floatflow_password}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 20
@@ -37,8 +39,8 @@ spring:
   mail:
     host: ${MAIL_HOST:smtp.gmail.com}
     port: ${MAIL_PORT:587}
-    username: ${MAIL_USERNAME}
-    password: ${MAIL_PASSWORD}
+    username: ${MAIL_USERNAME:no-reply@gmail.com}
+    password: ${MAIL_PASSWORD:your-generated-app-password}
     properties:
       mail:
         smtp:
@@ -47,7 +49,7 @@ spring:
             enable: ${MAIL_STARTTLS:true}
 
 jwt:
-  secret: ${JWT_SECRET}
+  secret: ${JWT_SECRET:super-secret-jwt-key-change-in-production-must-be-44-chars-base64-at-least-for-HS256-signing-1234567890abcdef}
   expiration: ${JWT_EXPIRATION:86400000}
 
 springdoc:
@@ -67,7 +69,7 @@ logging:
 floatflow:
   mail:
     enabled: ${FLOATFLOW_MAIL_ENABLED:true}
-    from: ${FLOATFLOW_MAIL_FROM}
+    from: ${FLOATFLOW_MAIL_FROM:no-reply@floatflow.local}
   auth:
     reset-url-base: ${FLOATFLOW_RESET_URL_BASE:http://localhost:5173/reset-password}
   report:
